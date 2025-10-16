@@ -1,0 +1,4 @@
+AllowShortFunctionsOnASingleLine: "Empty"
+ColumnLimit: 100
+PointerAlignment: "Left"
+SortIncludes: false
