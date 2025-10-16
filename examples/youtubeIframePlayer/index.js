@@ -18,7 +18,6 @@ window.onYouTubeIframeAPIReady = () => {
     events: {
       // onReady: () => {
       // console.log("ready");
-      // setTimeout(() => player.playVideo(), 1000);
       // progressInterval = setInterval(onTick, 200);
       // isReady = true;
       // },
@@ -30,6 +29,7 @@ window.onYouTubeIframeAPIReady = () => {
   // (document as any).player = player;
 };
 
+// Calling init on DOMContentLoaded events works fine, but autoplay doesn't seem to work. Seems like a player bug, because calling the same function on a keyboard events works with autoplay
 document.addEventListener("keydown", (e) => {
   if (e.key == "d") init();
   console.log(e);
