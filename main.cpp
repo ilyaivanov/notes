@@ -13,6 +13,7 @@
 #include "slider.cpp"
 #include "vim.cpp"
 
+const c16* path = L"sample.txt";
 f32 appTime;
 
 HWND win;
@@ -84,36 +85,23 @@ void RebuildLines() {
     }
   }
 
-  buffer.lines[buffer.linesLen++].textPos = buffer.textLen;
+  // buffer.lines[buffer.linesLen++].textPos = buffer.textLen;
 }
 
-void Init() {
-  c16* text = (c16*)L"one\ntwo";
-  // (c16*)L"foo\nbar\n"
-  // "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam "
-  // L"placerat, "
-  // L"neque a "
-  // L"consectetur maximus, massa ex molestie est, in ornare augue nulla nec dui. Ut "
-  // L"blandit sem eget tellus facilisis congue. Curabitur eget venenatis felis. "
-  // L"Suspendisse laoreet tempus luctus. Quisque eu tincidunt tellus. Vivamus "
-  // L"pellentesque est sed pharetra lacinia. Vestibulum rhoncus, enim et ultricies "
-  // L"luctus, lorem risus tincidunt nulla, sit amet rutrum est massa ac dolor. Quisque "
-  // L"id nisl vulputate, pretium odio id, blandit justo. Sed tortor erat, porttitor "
-  // L"vel risus ut, molestie efficitur sem. Etiam quis velit magna. Suspendisse nec "
-  // L"pellentesque mi. Suspendisse sodales in ex laoreet semper.\nOne fucking long "
-  // L"line of text\nAnother one fucking long line of "
-  // L"text\nOne one one one one one one one one one one one one one one one one one "
-  // L"one\nThree\nFive";
-
-  i32 len = wstrlen(text);
-
+void Init(c16* text, i32 len) {
   buffer.linesCapacity = 1024;
   buffer.lines = (LineBreak*)valloc(buffer.linesCapacity * sizeof(LineBreak));
 
   buffer.textCapacity = MB(2) / sizeof(c16);
   buffer.text = (c16*)valloc(buffer.textCapacity * sizeof(c16));
-  memcpy(buffer.text, text, len * sizeof(c16));
-  buffer.textLen = len;
+  i32 bufferPos = 0;
+  for (i32 i = 0; i < len; i++) {
+    if (text[i] != '\r') {
+      buffer.text[bufferPos] = text[i];
+      bufferPos++;
+    }
+  }
+  buffer.textLen = bufferPos;
 
   RebuildLines();
 }
@@ -180,8 +168,6 @@ void UpdateAndDraw(f32 lastFrameMs) {
       running.y += fontHeight * lineHeight;
   }
 
-  // cursor
-
   StretchDIBits(dc, 0, 0, screen.x, screen.y, 0, 0, screen.x, screen.y, canvas.pixels, &bitmapInfo,
                 DIB_RGB_COLORS, SRCCOPY);
 }
@@ -189,6 +175,25 @@ void UpdateAndDraw(f32 lastFrameMs) {
 void OnCursorUpdated() {
   timeToCursorBlink = 600;
   cursorBlinkStart = appTime + timeToCursorBlink;
+}
+
+void RemovePrevChar() {
+  if (buffer.cursor > 0) {
+    RemoveCharAt(buffer, buffer.cursor - 1);
+
+    buffer.cursor--;
+    OnCursorUpdated();
+    RebuildLines();
+    UpdateDesiredOffset(buffer, deviceContext);
+  }
+}
+
+void SaveFile() {
+  i32 utf8Count = WideCharToMultiByte(CP_UTF8, 0, buffer.text, buffer.textLen, 0, 0, 0, 0);
+
+  c8* text = (c8*)valloc(utf8Count * sizeof(c8));
+  WideCharToMultiByte(CP_UTF8, 0, buffer.text, buffer.textLen, text, utf8Count, 0, 0);
+  WriteMyFile(path, text, utf8Count);
 }
 
 i32 ignoreNextCharEvent = 0;
@@ -200,13 +205,18 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       if (ignoreNextCharEvent)
         ignoreNextCharEvent = 0;
       else {
-        if (wParam == '\r')
-          InsertCharAt(buffer, buffer.cursor, '\n');
-        else
-          InsertCharAt(buffer, buffer.cursor, wParam);
-        buffer.cursor++;
-        RebuildLines();
-        UpdateDesiredOffset(buffer, deviceContext);
+        if (wParam == VK_BACK)
+          RemovePrevChar();
+        else {
+          if (wParam == '\r')
+            InsertCharAt(buffer, buffer.cursor, '\n');
+          else
+            InsertCharAt(buffer, buffer.cursor, wParam);
+
+          buffer.cursor++;
+          RebuildLines();
+          UpdateDesiredOffset(buffer, deviceContext);
+        }
       }
     }
     break;
@@ -214,6 +224,7 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
   case WM_KEYDOWN:
     if (mode == Normal) {
       if (wParam == 'Q') {
+        SaveFile();
         PostQuitMessage(0);
         isRunning = 0;
       }
@@ -241,6 +252,29 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         JumpWordForward(buffer);
         OnCursorUpdated();
       }
+      if (wParam == 'B') {
+        JumpWordBackward(buffer);
+        OnCursorUpdated();
+      }
+      if (wParam == 'X') {
+        RemoveCharAt(buffer, buffer.cursor);
+
+        OnCursorUpdated();
+        RebuildLines();
+        UpdateDesiredOffset(buffer, deviceContext);
+      }
+      if (wParam == VK_BACK) {
+        RemovePrevChar();
+      }
+      if (wParam == '\r') {
+        InsertCharAt(buffer, buffer.cursor, '\n');
+        buffer.cursor++;
+
+        OnCursorUpdated();
+        RebuildLines();
+        UpdateDesiredOffset(buffer, deviceContext);
+      }
+
       if (wParam == 'I') {
         mode = Insert;
         ignoreNextCharEvent = 1;
@@ -336,7 +370,18 @@ extern "C" void WinMainCRTStartup() {
   segoe = CreateAppFont(dc, L"Segoe UI", FW_NORMAL, fontSize);
 
   isRunning = 1;
-  Init();
+
+  i64 size = GetMyFileSize(path);
+  c8* file = (c8*)valloc(size);
+  ReadFileInto(path, size, file);
+  i32 wideCharsCount = MultiByteToWideChar(CP_UTF8, MB_PRECOMPOSED, file, size, 0, 0);
+  c16* text = (c16*)valloc(wideCharsCount * sizeof(c16));
+  MultiByteToWideChar(CP_UTF8, MB_PRECOMPOSED, file, size, text, wideCharsCount);
+  Init(text, wideCharsCount);
+
+  vfree(file);
+  vfree(text);
+
   UpdateAndDraw(0);
   while (isRunning) {
     MSG msg;

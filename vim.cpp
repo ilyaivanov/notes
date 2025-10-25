@@ -24,12 +24,18 @@ struct Buffer {
 };
 
 void InsertCharAt(Buffer& b, i32 at, c16 ch) {
-
   for (i32 i = b.textLen; i > at; i--) {
     b.text[i] = b.text[i - 1];
   }
   b.text[at] = ch;
   b.textLen++;
+}
+
+void RemoveCharAt(Buffer& b, i32 at) {
+  for (i32 i = at; i < b.textLen - 1; i++) {
+    b.text[i] = b.text[i + 1];
+  }
+  b.textLen--;
 }
 
 i32 FindLineStart(Buffer& b, i32* lineIndex = 0) {
@@ -50,7 +56,7 @@ void UpdateDesiredOffset(Buffer& b, HDC dc) {
 }
 
 i32 ClampCursor(Buffer& b, i32 pos) {
-  return clamp(pos, 0, b.textLen);
+  return clamp(pos, 0, b.textLen - 1);
 }
 
 void MoveRight(Buffer& b, HDC dc) {
@@ -118,5 +124,22 @@ void JumpWordForward(Buffer& b) {
 
   while (b.text[b.cursor] == ' ' && b.cursor <= b.textLen)
     b.cursor++;
+  b.cursor = ClampCursor(b, b.cursor);
+}
+
+// one two three four five   six sever
+void JumpWordBackward(Buffer& b) {
+  b.cursor--;
+  if (IsWhitespace(b.text[b.cursor])) {
+    while (IsWhitespace(b.text[b.cursor]) && b.cursor > 0)
+      b.cursor--;
+  }
+
+  while (!IsWhitespace(b.text[b.cursor]) && b.cursor > 0)
+    b.cursor--;
+
+  if (b.cursor != 0)
+    b.cursor++;
+
   b.cursor = ClampCursor(b, b.cursor);
 }

@@ -9,18 +9,18 @@ f32 lerp(f32 from, f32 to, f32 v) {
   return (1 - v) * from + to * v;
 }
 
-f32 Min(f32 a, f32 b) {
-  return a < b ? a : b;
-}
-
-f32 Max(f32 a, f32 b) {
-  return a > b ? a : b;
-}
-
+// f32 Min(f32 a, f32 b) {
+//   return a < b ? a : b;
+// }
+//
+// f32 Max(f32 a, f32 b) {
+//   return a > b ? a : b;
+// }
+//
 inline u8 RoundU8(f32 v) {
   return (u8)(v + 0.5);
 }
-
+//
 inline u32 AlphaBlendColors(u32 from, u32 to, f32 factor) {
   u8 fromR = (u8)((from & 0xff0000) >> 16);
   u8 fromG = (u8)((from & 0x00ff00) >> 8);
@@ -36,45 +36,45 @@ inline u32 AlphaBlendColors(u32 from, u32 to, f32 factor) {
 
   return (blendedR << 16) | (blendedG << 8) | (blendedB << 0);
 }
-
-inline u32 AlphaBlendGreyscale(u32 destination, u8 source, u32 color) {
-  u8 destR = (u8)((destination & 0xff0000) >> 16);
-  u8 destG = (u8)((destination & 0x00ff00) >> 8);
-  u8 destB = (u8)((destination & 0x0000ff) >> 0);
-
-  u8 sourceR = (u8)((color & 0xff0000) >> 16);
-  u8 sourceG = (u8)((color & 0x00ff00) >> 8);
-  u8 sourceB = (u8)((color & 0x0000ff) >> 0);
-
-  f32 a = ((f32)source) / 255.0f;
-  u8 blendedR = RoundU8(lerp(destR, sourceR, a));
-  u8 blendedG = RoundU8(lerp(destG, sourceG, a));
-  u8 blendedB = RoundU8(lerp(destB, sourceB, a));
-
-  return (blendedR << 16) | (blendedG << 8) | (blendedB << 0);
-}
-
-inline void DrawAppTexture(MyBitmap* canvas, MyBitmap* sourceT, i32 offsetX, i32 offsetY) {
-  u32* row = (u32*)canvas->pixels + offsetX + offsetY * canvas->width;
-  u32* source = (u32*)sourceT->pixels + sourceT->width * (sourceT->height - 1);
-  for (i32 y = 0; y < (i32)sourceT->height; y += 1) {
-    u32* pixel = row;
-    u32* sourcePixel = source;
-    for (i32 x = 0; x < (i32)sourceT->width; x += 1) {
-      // stupid fucking logic needs to extracted outside of the loop
-      // if (*sourcePixel != 0 && (y + offsetY) > rect->y && (x + offsetX) > rect->x &&
-      //     (x + offsetX) < (rect->x + rect->width) && (y + offsetY) < (rect->y + rect->height))
-      *pixel = *sourcePixel;
-      //   *pixel = AlphaBlendGreyscale(*pixel, *sourcePixel, color);
-
-      sourcePixel += 1;
-      pixel += 1;
-    }
-    source -= sourceT->width;
-    row += canvas->width;
-  }
-}
-
+//
+// inline u32 AlphaBlendGreyscale(u32 destination, u8 source, u32 color) {
+//   u8 destR = (u8)((destination & 0xff0000) >> 16);
+//   u8 destG = (u8)((destination & 0x00ff00) >> 8);
+//   u8 destB = (u8)((destination & 0x0000ff) >> 0);
+//
+//   u8 sourceR = (u8)((color & 0xff0000) >> 16);
+//   u8 sourceG = (u8)((color & 0x00ff00) >> 8);
+//   u8 sourceB = (u8)((color & 0x0000ff) >> 0);
+//
+//   f32 a = ((f32)source) / 255.0f;
+//   u8 blendedR = RoundU8(lerp(destR, sourceR, a));
+//   u8 blendedG = RoundU8(lerp(destG, sourceG, a));
+//   u8 blendedB = RoundU8(lerp(destB, sourceB, a));
+//
+//   return (blendedR << 16) | (blendedG << 8) | (blendedB << 0);
+// }
+//
+// inline void DrawAppTexture(MyBitmap* canvas, MyBitmap* sourceT, i32 offsetX, i32 offsetY) {
+//   u32* row = (u32*)canvas->pixels + offsetX + offsetY * canvas->width;
+//   u32* source = (u32*)sourceT->pixels + sourceT->width * (sourceT->height - 1);
+//   for (i32 y = 0; y < (i32)sourceT->height; y += 1) {
+//     u32* pixel = row;
+//     u32* sourcePixel = source;
+//     for (i32 x = 0; x < (i32)sourceT->width; x += 1) {
+//       // stupid fucking logic needs to extracted outside of the loop
+//       // if (*sourcePixel != 0 && (y + offsetY) > rect->y && (x + offsetX) > rect->x &&
+//       //     (x + offsetX) < (rect->x + rect->width) && (y + offsetY) < (rect->y + rect->height))
+//       *pixel = *sourcePixel;
+//       //   *pixel = AlphaBlendGreyscale(*pixel, *sourcePixel, color);
+//
+//       sourcePixel += 1;
+//       pixel += 1;
+//     }
+//     source -= sourceT->width;
+//     row += canvas->width;
+//   }
+// }
+//
 void PaintRect(MyBitmap* bitmap, i32 x, i32 y, i32 width, i32 height, u32 color) {
   for (i32 i = x; i < x + width; i++) {
     for (i32 j = y; j < y + height; j++) {
