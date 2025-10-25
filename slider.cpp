@@ -183,6 +183,14 @@ f32 clamp(f32 v, f32 min, f32 max) {
   return v;
 }
 
+i32 clamp(i32 v, i32 min, i32 max) {
+  if (v < min)
+    return min;
+  if (v > max)
+    return max;
+  return v;
+}
+
 float Map(float value, float fromMin, float fromMax, float toMin, float toMax) {
   return clamp(toMin + (value - fromMin) * (toMax - toMin) / (fromMax - fromMin), toMin, toMax);
 }

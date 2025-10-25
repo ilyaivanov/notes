@@ -29,6 +29,8 @@ HBITMAP bitmap;
 BITMAPINFO bitmapInfo;
 MyBitmap canvas;
 
+enum Mode { Normal, Insert };
+Mode mode;
 i32 fontSize = 15;
 f32 lineHeight = 1.2;
 v3 white = {1, 1, 1};
@@ -55,7 +57,7 @@ void RebuildLines() {
   i32 lineStart = 0;
   buffer.lines[0] = (LineBreak){.isSoft = 0, .textPos = 0};
   buffer.linesLen = 1;
-  wchar_t* text = buffer.text;
+  c16* text = buffer.text;
   // i32 isStartingFromLineStart = 1;
 
   f32 maxWidth = screen.x - pagePadding * 2;
@@ -81,37 +83,39 @@ void RebuildLines() {
       wordStart = i + 1;
     }
   }
+
+  buffer.lines[buffer.linesLen++].textPos = buffer.textLen;
 }
 
 void Init() {
-  wchar_t* text =
-      (wchar_t*)L"foo\nbar\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam "
-                L"placerat, "
-                L"neque a "
-                L"consectetur maximus, massa ex molestie est, in ornare augue nulla nec dui. Ut "
-                L"blandit sem eget tellus facilisis congue. Curabitur eget venenatis felis. "
-                L"Suspendisse laoreet tempus luctus. Quisque eu tincidunt tellus. Vivamus "
-                L"pellentesque est sed pharetra lacinia. Vestibulum rhoncus, enim et ultricies "
-                L"luctus, lorem risus tincidunt nulla, sit amet rutrum est massa ac dolor. Quisque "
-                L"id nisl vulputate, pretium odio id, blandit justo. Sed tortor erat, porttitor "
-                L"vel risus ut, molestie efficitur sem. Etiam quis velit magna. Suspendisse nec "
-                L"pellentesque mi. Suspendisse sodales in ex laoreet semper.\nOne fucking long "
-                L"line of text\nAnother one fucking long line of "
-                L"text\nOne one one one one one one one one one one one one one one one one one "
-                L"one\nThree\nFive";
+  c16* text = (c16*)L"one\ntwo";
+  // (c16*)L"foo\nbar\n"
+  // "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam "
+  // L"placerat, "
+  // L"neque a "
+  // L"consectetur maximus, massa ex molestie est, in ornare augue nulla nec dui. Ut "
+  // L"blandit sem eget tellus facilisis congue. Curabitur eget venenatis felis. "
+  // L"Suspendisse laoreet tempus luctus. Quisque eu tincidunt tellus. Vivamus "
+  // L"pellentesque est sed pharetra lacinia. Vestibulum rhoncus, enim et ultricies "
+  // L"luctus, lorem risus tincidunt nulla, sit amet rutrum est massa ac dolor. Quisque "
+  // L"id nisl vulputate, pretium odio id, blandit justo. Sed tortor erat, porttitor "
+  // L"vel risus ut, molestie efficitur sem. Etiam quis velit magna. Suspendisse nec "
+  // L"pellentesque mi. Suspendisse sodales in ex laoreet semper.\nOne fucking long "
+  // L"line of text\nAnother one fucking long line of "
+  // L"text\nOne one one one one one one one one one one one one one one one one one "
+  // L"one\nThree\nFive";
 
   i32 len = wstrlen(text);
 
   buffer.linesCapacity = 1024;
   buffer.lines = (LineBreak*)valloc(buffer.linesCapacity * sizeof(LineBreak));
 
-  buffer.textCapacity = MB(2) / sizeof(wchar_t);
-  buffer.text = (wchar_t*)valloc(buffer.textCapacity * sizeof(wchar_t));
-  memcpy(buffer.text, text, len * sizeof(wchar_t));
+  buffer.textCapacity = MB(2) / sizeof(c16);
+  buffer.text = (c16*)valloc(buffer.textCapacity * sizeof(c16));
+  memcpy(buffer.text, text, len * sizeof(c16));
   buffer.textLen = len;
 
   RebuildLines();
-  buffer.lines[buffer.linesLen++].textPos = len;
 }
 
 void UpdateAndDraw(f32 lastFrameMs) {
@@ -135,25 +139,39 @@ void UpdateAndDraw(f32 lastFrameMs) {
   i32 cursorWidth = 2;
 
   v3 grey = {0.13, 0.13, 0.13};
+  v3 cursorBgRed = {0.4, 0.1, 0.1};
+
+  u32 cursorColor = 0xffffff;
 
   v2 running = pos;
 
   for (i32 i = 0; i < buffer.linesLen - 1; i++) {
     i32 start = buffer.lines[i].textPos;
     i32 end = buffer.lines[i + 1].textPos;
-    if (buffer.cursor >= start && buffer.cursor < end) {
-      SetColors(white, grey);
-      PaintRect(&canvas, 0, running.y, screen.x, fontHeight, grey);
+    i32 isCursorVisibleOnLine = ((buffer.cursor >= start && buffer.cursor < end) ||
+                                 (buffer.cursor == buffer.textLen && i == buffer.linesLen - 2));
+
+    f32 cursorY = running.y;
+    f32 cursorHeight = fontHeight * 1.1;
+
+    if (isCursorVisibleOnLine) {
+      if (mode == Insert) {
+        SetColors(white, cursorBgRed);
+        PaintRect(&canvas, 0, cursorY, screen.x, cursorHeight, cursorBgRed);
+      } else {
+        SetColors(white, grey);
+        PaintRect(&canvas, 0, cursorY, screen.x, cursorHeight, grey);
+      }
     } else {
       SetColors(white, black);
     }
 
     TextOutW(deviceContext, running.x, running.y, buffer.text + start, end - start);
 
-    if (buffer.cursor >= start && buffer.cursor < end) {
+    if (isCursorVisibleOnLine) {
       i32 cursorX = running.x - cursorWidth / 2.0 +
                     GetTextWidth(deviceContext, buffer.text, start, buffer.cursor);
-      PaintRectA(&canvas, cursorX, running.y, cursorWidth, fontHeight, 0xffffff, a);
+      PaintRectA(&canvas, cursorX, cursorY, cursorWidth, cursorHeight, cursorColor, a);
     }
 
     if (buffer.lines[i + 1].isSoft)
@@ -173,32 +191,63 @@ void OnCursorUpdated() {
   cursorBlinkStart = appTime + timeToCursorBlink;
 }
 
+i32 ignoreNextCharEvent = 0;
 LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
   switch (message) {
+  case WM_CHAR: {
+
+    if (mode == Insert) {
+      if (ignoreNextCharEvent)
+        ignoreNextCharEvent = 0;
+      else {
+        if (wParam == '\r')
+          InsertCharAt(buffer, buffer.cursor, '\n');
+        else
+          InsertCharAt(buffer, buffer.cursor, wParam);
+        buffer.cursor++;
+        RebuildLines();
+        UpdateDesiredOffset(buffer, deviceContext);
+      }
+    }
+    break;
+  }
   case WM_KEYDOWN:
-    if (wParam == 'Q') {
-      PostQuitMessage(0);
-      isRunning = 0;
-    }
-    if (wParam == 'F') {
-      isFullscreen = !isFullscreen;
-      SetFullscreen(win, isFullscreen);
-    }
-    if (wParam == 'L') {
-      MoveRight(buffer, deviceContext);
-      OnCursorUpdated();
-    }
-    if (wParam == 'H') {
-      MoveLeft(buffer, deviceContext);
-      OnCursorUpdated();
-    }
-    if (wParam == 'J') {
-      MoveDown(buffer, deviceContext);
-      OnCursorUpdated();
-    }
-    if (wParam == 'K') {
-      MoveUp(buffer, deviceContext);
-      OnCursorUpdated();
+    if (mode == Normal) {
+      if (wParam == 'Q') {
+        PostQuitMessage(0);
+        isRunning = 0;
+      }
+      if (wParam == 'F') {
+        isFullscreen = !isFullscreen;
+        SetFullscreen(win, isFullscreen);
+      }
+      if (wParam == 'L') {
+        MoveRight(buffer, deviceContext);
+        OnCursorUpdated();
+      }
+      if (wParam == 'H') {
+        MoveLeft(buffer, deviceContext);
+        OnCursorUpdated();
+      }
+      if (wParam == 'J') {
+        MoveDown(buffer, deviceContext);
+        OnCursorUpdated();
+      }
+      if (wParam == 'K') {
+        MoveUp(buffer, deviceContext);
+        OnCursorUpdated();
+      }
+      if (wParam == 'W') {
+        JumpWordForward(buffer);
+        OnCursorUpdated();
+      }
+      if (wParam == 'I') {
+        mode = Insert;
+        ignoreNextCharEvent = 1;
+      }
+    } else if (mode == Insert) {
+      if (wParam == VK_ESCAPE)
+        mode = Normal;
     }
     break;
   case WM_KEYUP:
@@ -254,6 +303,7 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
     // glViewport(0, 0, screen.x, screen.y);
     if (isRunning) {
       RebuildLines();
+      UpdateDesiredOffset(buffer, deviceContext);
       UpdateAndDraw(0);
     }
     break;
