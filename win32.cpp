@@ -25,6 +25,12 @@ typedef uint64_t u64;
 typedef float f32;
 typedef double f64;
 
+struct Rect {
+  i32 x;
+  i32 y;
+  i32 width;
+  i32 height;
+};
 struct v2 {
   f32 x;
   f32 y;
@@ -76,13 +82,6 @@ struct v4 {
       f32 w;
     };
   };
-};
-
-struct Rect {
-  i32 x;
-  i32 y;
-  i32 width;
-  i32 height;
 };
 
 typedef struct MyBitmap {
@@ -146,7 +145,7 @@ HWND OpenWindow(WindowProc* proc) {
   int screenWidth = GetDeviceCaps(screenDc, HORZRES);
   //  int screenHeight = GetDeviceCaps(screenDc, VERTRES);
 
-  int width = 800;
+  int width = 1200;
   int height = 800;
 
   HWND win = CreateWindowW(windowClass.lpszClassName, L"Notes", WS_OVERLAPPEDWINDOW,

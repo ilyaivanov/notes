@@ -56,7 +56,10 @@ void UpdateDesiredOffset(Buffer& b, HDC dc) {
 }
 
 i32 ClampCursor(Buffer& b, i32 pos) {
-  return clamp(pos, 0, b.textLen - 1);
+  i32 lastPos = b.textLen;
+  if (b.text[b.textLen - 1] == '\n')
+    lastPos--;
+  return clamp(pos, 0, lastPos);
 }
 
 void MoveRight(Buffer& b, HDC dc) {
@@ -129,14 +132,15 @@ void JumpWordForward(Buffer& b) {
 
 // one two three four five   six sever
 void JumpWordBackward(Buffer& b) {
-  b.cursor--;
+  b.cursor = ClampCursor(b, b.cursor - 1);
+
   if (IsWhitespace(b.text[b.cursor])) {
     while (IsWhitespace(b.text[b.cursor]) && b.cursor > 0)
-      b.cursor--;
+      b.cursor = ClampCursor(b, b.cursor - 1);
   }
 
   while (!IsWhitespace(b.text[b.cursor]) && b.cursor > 0)
-    b.cursor--;
+    b.cursor = ClampCursor(b, b.cursor - 1);
 
   if (b.cursor != 0)
     b.cursor++;
