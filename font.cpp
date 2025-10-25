@@ -1,6 +1,7 @@
 #pragma once
 
 #include "win32.cpp"
+#include <wingdi.h>
 #ifdef USE_OPENGL
 #include <gl/gl.h>
 #endif
@@ -20,6 +21,8 @@ typedef struct FontData {
   i32 charHeight;
 
   TEXTMETRIC textMetric;
+  v3 foreground;
+  v3 background;
 } FontData;
 
 #define TRANSPARENT_R 0x0
@@ -48,15 +51,13 @@ inline void CopyRectTo(MyBitmap* sourceT, MyBitmap* destination) {
   }
 }
 
-void InitFont(FontData* fontData, int fontSize, const char* fontName) {
-  HDC deviceContext = CreateCompatibleDC(0);
-
-  int h = -MulDiv(fontSize, GetDeviceCaps(deviceContext, LOGPIXELSY), USER_DEFAULT_SCREEN_DPI);
-  HFONT font = CreateFontA(h, 0, 0, 0,
-                           FW_DONTCARE, // Weight
-                           0,           // Italic
-                           0,           // Underline
-                           0,           // Strikeout
+HFONT CreateAppFont(HDC dc, const wchar_t* name, i32 weight, i32 fontSize) {
+  int h = -MulDiv(fontSize, GetDeviceCaps(dc, LOGPIXELSY), USER_DEFAULT_SCREEN_DPI);
+  HFONT font = CreateFontW(h, 0, 0, 0,
+                           weight, // Weight
+                           0,      // Italic
+                           0,      // Underline
+                           0,      // Strikeout
                            DEFAULT_CHARSET, OUT_TT_ONLY_PRECIS, CLIP_DEFAULT_PRECIS,
 
                            // I've experimented with the Chrome and it doesn't render LCD
@@ -66,7 +67,62 @@ void InitFont(FontData* fontData, int fontSize, const char* fontName) {
                            // setting a custom color for a shader
                            CLEARTYPE_QUALITY,
 
-                           DEFAULT_PITCH, fontName);
+                           DEFAULT_PITCH, name);
+  return font;
+}
+
+void FillVals(i32* vals, const wchar_t* fontName, i32 fontSize) {
+  HDC deviceContext = CreateCompatibleDC(0);
+
+  HFONT font = CreateAppFont(deviceContext, fontName, FW_DONTCARE, fontSize);
+
+  BITMAPINFO info = {};
+  u32 textureSize = 30;
+  info.bmiHeader.biSize = sizeof(info.bmiHeader);
+  info.bmiHeader.biBitCount = 32;
+  info.bmiHeader.biWidth = textureSize;
+  info.bmiHeader.biHeight = textureSize;
+  info.bmiHeader.biPlanes = 1;
+  info.bmiHeader.biCompression = BI_RGB;
+
+  void* bits;
+  HBITMAP bitmap = CreateDIBSection(deviceContext, &info, DIB_RGB_COLORS, &bits, 0, 0);
+  MyBitmap fontCanvas = {
+      .width = textureSize, .height = textureSize, .bytesPerPixel = 4, .pixels = (u32*)bits};
+
+  SelectObject(deviceContext, bitmap);
+  SelectObject(deviceContext, font);
+
+  // TRANSPARENT still leaves 00 as alpha value for non-trasparent pixels. I
+  // love GDI SetBkColor(deviceContext, TRANSPARENT);
+
+  // SIZE size;
+  for (i32 i = 0; i <= 255; i++) {
+    SetBkColor(deviceContext, RGB(0, 0, i));
+    SetTextColor(deviceContext, RGB(255, 255, 255));
+    // GetTextExtentPoint32W(deviceContext, &ch, len, &size);
+
+    TextOutW(deviceContext, 0, 0, L"l", 1);
+    u32 color = fontCanvas.pixels[1 + 6 * fontCanvas.width];
+    [[maybe_unused]] u32 r = (color & 0xff0000) >> 16;
+    [[maybe_unused]] u32 g = (color & 0x00ff00) >> 8;
+    [[maybe_unused]] u32 b = (color & 0x0000ff) >> 0;
+    vals[i] = b;
+  }
+
+  DeleteObject(bitmap);
+  DeleteObject(font);
+  DeleteDC(deviceContext);
+}
+
+void InitFont(FontData* fontData, int fontSize, const wchar_t* fontName, DWORD weight,
+              v3 foreground, v3 background) {
+  fontData->foreground = foreground;
+  fontData->background = background;
+
+  HDC deviceContext = CreateCompatibleDC(0);
+
+  HFONT font = CreateAppFont(deviceContext, fontName, weight, fontSize);
 
   BITMAPINFO info = {};
   u32 textureSize = 512;
@@ -85,10 +141,14 @@ void InitFont(FontData* fontData, int fontSize, const char* fontName) {
   SelectObject(deviceContext, bitmap);
   SelectObject(deviceContext, font);
 
+  foreground *= 255.0;
+  background *= 255.0;
   // TRANSPARENT still leaves 00 as alpha value for non-trasparent pixels. I
   // love GDI SetBkColor(deviceContext, TRANSPARENT);
-  SetBkColor(deviceContext, RGB(TRANSPARENT_R, TRANSPARENT_G, TRANSPARENT_B));
-  SetTextColor(deviceContext, RGB(255, 255, 255));
+  SetBkColor(deviceContext,
+             RGB(background.x, background.y,
+                 background.z)); // RGB(TRANSPARENT_R, TRANSPARENT_G, TRANSPARENT_B));
+  SetTextColor(deviceContext, RGB(foreground.x, foreground.y, foreground.z));
 
   SIZE size;
   for (wchar_t ch = 32; ch < MAX_CHAR_CODE; ch += 1) {
@@ -102,6 +162,9 @@ void InitFont(FontData* fontData, int fontSize, const char* fontName) {
     texture->height = size.cy;
     texture->bytesPerPixel = 4;
 
+    if (texture->pixels)
+      vfree(texture->pixels);
+
     texture->pixels = (u32*)valloc(texture->height * texture->width * texture->bytesPerPixel);
 
     CopyRectTo(&fontCanvas, texture);
@@ -112,6 +175,7 @@ void InitFont(FontData* fontData, int fontSize, const char* fontName) {
   fontData->charHeight = fontData->textMetric.tmHeight;
   fontData->charWidth = fontData->textures['W'].width;
   DeleteObject(bitmap);
+  DeleteObject(font);
   DeleteDC(deviceContext);
 }
 
@@ -135,8 +199,9 @@ void CreateFontTexturesForOpenGl(FontData* font) {
 }
 #endif
 
-void CreateFont(FontData* font, i32 size, const char* name) {
-  InitFont(font, size, name);
+void CreateFont(FontData* font, i32 size, const wchar_t* name, DWORD weight, v3 foreground,
+                v3 background) {
+  InitFont(font, size, name, weight, foreground, background);
 #ifdef USE_OPENGL
   CreateFontTexturesForOpenGl(font);
 #endif

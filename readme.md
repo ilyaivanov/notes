@@ -4,5 +4,8 @@ Idea
 
 Scope
   - Tree-like structure for notes (aka workflowy)
+  - Layout of the app (aka flexbox in C++)
 
 16.10.25 Starting to work on notes
+18.10.25
+  

@@ -1,0 +1,2 @@
+First simple project: 
+  - Allow me to use nvim to edit text from clipboard. Zero dependencies and vim implementation from scratch. No CLI UI as well

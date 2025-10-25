@@ -1,10 +1,10 @@
 #pragma once
 
+#include <math.h>
 #include <dwmapi.h>
 #include <stdint.h>
 #include <windows.h>
 #include <windowsx.h>
-#include <climits>
 
 extern "C" int _fltused = 0x9875;
 typedef char c8;
@@ -29,6 +29,11 @@ struct v2 {
   f32 x;
   f32 y;
 };
+
+v2 vec2(f32 x, f32 y) {
+  return (v2){x, y};
+}
+
 struct vi2 {
   i32 x;
   i32 y;
@@ -39,6 +44,28 @@ struct v3 {
   f32 y;
   f32 z;
 };
+
+bool operator==(v3& a, v3& b) {
+  return a.x == b.x && a.y == b.y && a.z == b.z;
+}
+
+v3 operator*(v3 v, f32 s) {
+  v3 res = {v.x * s, v.y * s, v.z * s};
+  return res;
+}
+v3 operator*(f32 s, v3 v) {
+  v3 res = {v.x * s, v.y * s, v.z * s};
+  return res;
+}
+
+v3& operator*=(v3& v, f32 s) {
+  v = s * v;
+  return v;
+}
+
+bool operator!=(v3& a, v3& b) {
+  return a.x != b.x || a.y != b.y || a.z != b.z;
+}
 
 struct v4 {
   union {
@@ -77,6 +104,17 @@ inline void vfree(void* ptr) {
   VirtualFree(ptr, 0, MEM_RELEASE);
 };
 
+#pragma function(memcpy)
+void* memcpy(void* dest, void* src, size_t n) {
+  char* csrc = (char*)src;
+  char* cdest = (char*)dest;
+
+  for (size_t i = 0; i < n; i++)
+    cdest[i] = csrc[i];
+
+  return dest;
+}
+
 // Increasing Read Bandwidth with SIMD Instructions
 // https://www.computerenhance.com/p/increasing-read-bandwidth-with-simd
 
@@ -108,11 +146,11 @@ HWND OpenWindow(WindowProc* proc) {
   int screenWidth = GetDeviceCaps(screenDc, HORZRES);
   //  int screenHeight = GetDeviceCaps(screenDc, VERTRES);
 
-  int width = 1300;
-  int height = 1300;
+  int width = 800;
+  int height = 800;
 
-  HWND win = CreateWindowW(windowClass.lpszClassName, L"Game", WS_OVERLAPPEDWINDOW,
-                           screenWidth - width, 0, width, height, 0, 0, instance, 0);
+  HWND win = CreateWindowW(windowClass.lpszClassName, L"Notes", WS_OVERLAPPEDWINDOW,
+                           screenWidth - width - 1200, 0, width, height, 0, 0, instance, 0);
 
   BOOL USE_DARK_MODE = TRUE;
   SUCCEEDED(DwmSetWindowAttribute(win, DWMWA_USE_IMMERSIVE_DARK_MODE, &USE_DARK_MODE,
@@ -239,22 +277,28 @@ inline i64 GetPerfCounter() {
 //
 
 struct CharBuffer {
-  char content[512];
+  wchar_t content[512];
   i32 len;
 };
 
-inline void AddChar(CharBuffer* buff, char ch) {
+inline void AddChar(CharBuffer* buff, wchar_t ch) {
   buff->content[buff->len++] = ch;
 }
 
-void Append(CharBuffer* buff, const char* str) {
+void Append(CharBuffer* buff, const wchar_t* str) {
   while (*str) {
     AddChar(buff, *str);
     str++;
   }
 }
 
-i32 abs(i32 a) {
+// i32 abs(i32 a) {
+//   if (a < 0)
+//     return -a;
+//   return a;
+// }
+
+f32 abs(f32 a) {
   if (a < 0)
     return -a;
   return a;
@@ -262,18 +306,18 @@ i32 abs(i32 a) {
 
 void Append(CharBuffer* buff, i32 val) {
   if (val < 0) {
-    AddChar(buff, '-');
+    AddChar(buff, L'-');
     val = -val;
   }
 
   if (val == 0)
-    AddChar(buff, '0');
+    AddChar(buff, L'0');
 
   u32 templen = 0;
-  char temp[32];
+  wchar_t temp[32];
   while (val != 0) {
     // abs because -val above can produce negative result for INT_MIN
-    temp[templen++] = '0' + abs(val % 10);
+    temp[templen++] = L'0' + abs(val % 10);
     val /= 10;
   }
 
@@ -283,18 +327,25 @@ void Append(CharBuffer* buff, i32 val) {
 
 void Append(CharBuffer* buff, f32 val) {
   if (val != val)
-    Append(buff, "NaN");
+    Append(buff, L"NaN");
   else {
     Append(buff, (i32)val);
-    AddChar(buff, '.');
+    AddChar(buff, L'.');
     Append(buff, (i32)((val - (i32)val) * 10));
   }
 }
 
 void Append(CharBuffer* buff, v2 vec) {
   Append(buff, vec.x);
-  Append(buff, ",");
+  Append(buff, L",");
   Append(buff, vec.y);
+}
+void Append(CharBuffer* buff, v3 vec) {
+  Append(buff, vec.x);
+  Append(buff, L",");
+  Append(buff, vec.y);
+  Append(buff, L",");
+  Append(buff, vec.z);
 }
 
 void AppendLine(CharBuffer* buff, v2 vec) {
@@ -302,17 +353,22 @@ void AppendLine(CharBuffer* buff, v2 vec) {
   AddChar(buff, '\n');
 }
 
-void AppendLine(CharBuffer* buff, const char* str) {
-  Append(buff, str);
+void AppendLine(CharBuffer* buff, v3 vec) {
+  Append(buff, vec);
   AddChar(buff, '\n');
+}
+
+void AppendLine(CharBuffer* buff, const wchar_t* str) {
+  Append(buff, str);
+  AddChar(buff, L'\n');
 }
 
 void AppendLine(CharBuffer* buff, f32 val) {
   if (val != val)
-    Append(buff, "NaN");
+    Append(buff, L"NaN");
   else {
     Append(buff, (i32)val);
-    AddChar(buff, '.');
+    AddChar(buff, L'.');
     Append(buff, (i32)((val - (i32)val) * 10));
   }
   AddChar(buff, '\n');
@@ -320,5 +376,5 @@ void AppendLine(CharBuffer* buff, f32 val) {
 
 void AppendLine(CharBuffer* buff, i32 val) {
   Append(buff, val);
-  AddChar(buff, '\n');
+  AddChar(buff, L'\n');
 }

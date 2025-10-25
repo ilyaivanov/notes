@@ -2,7 +2,7 @@
 
 set libs=-lkernel32 -luser32 -lgdi32.lib -ldwmapi.lib  -lwinmm.lib 
 set linker=-Xlinker /NODEFAULTLIB -Xlinker /entry:WinMainCRTStartup -Xlinker /subsystem:windows
-rem set linker=-Xlinker /subsystem:windows
+REM set linker=-Xlinker /subsystem:windows
 
 set common=-Wall -Wextra
 

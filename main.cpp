@@ -1,130 +1,176 @@
 #define UNICODE
 #define _UNICODE
 #define WIN32_LEAN_AND_MEAN
+#define USE_SSE2
 
+// later I will move glFunction and glProgram files here and will render everything vie opengl
+// I want to be able to have two rendering mechanisms, would be an interesting architectural task
 // #define USE_OPENGL
+
 #include "win32.cpp"
-#include "font.cpp"
+#include "text.cpp"
+#include "sincos.cpp"
+#include "slider.cpp"
+#include "vim.cpp"
 
 f32 appTime;
-f32 frameTime;
 
 HWND win;
 HDC dc;
+HDC deviceContext;
 
 i32 isRunning = 0;
 i32 isFullscreen = 0;
 v2 screen;
-FontData regularFont;
+v2 mouse;
+HFONT segoe;
 
+HBITMAP bitmap;
 BITMAPINFO bitmapInfo;
 MyBitmap canvas;
 
-// u32 ToWinColor(u32 color) {
-//   return ((color & 0xff0000) >> 16) | (color & 0x00ff00) | ((color & 0x0000ff) << 16);
-// }
+i32 fontSize = 15;
+f32 lineHeight = 1.2;
+v3 white = {1, 1, 1};
+v3 black = {0, 0, 0};
 
-//
-// Math
-//
+f32 timeToCursorBlink = 1000;
+f32 cursorBlinkStart = 0;
 
-f32 lerp(f32 from, f32 to, f32 v) {
-  return (1 - v) * from + to * v;
+void SetColors(v3 foreground, v3 background) {
+  foreground *= 255.0;
+  background *= 255.0;
+  SetBkColor(deviceContext, RGB(background.x, background.y, background.z));
+  SetTextColor(deviceContext, RGB(foreground.x, foreground.y, foreground.z));
 }
 
-inline u8 RoundU8(f32 v) {
-  return (u8)(v + 0.5);
-}
+Buffer buffer;
 
-inline u32 AlphaBlendColors(u32 from, u32 to, f32 factor) {
-  u8 fromR = (u8)((from & 0xff0000) >> 16);
-  u8 fromG = (u8)((from & 0x00ff00) >> 8);
-  u8 fromB = (u8)((from & 0x0000ff) >> 0);
+f32 pagePadding = 20;
 
-  u8 toR = (u8)((to & 0xff0000) >> 16);
-  u8 toG = (u8)((to & 0x00ff00) >> 8);
-  u8 toB = (u8)((to & 0x0000ff) >> 0);
+void RebuildLines() {
+  SelectObject(deviceContext, bitmap);
+  SelectObject(deviceContext, segoe);
+  i32 wordStart = 0;
+  i32 lineStart = 0;
+  buffer.lines[0] = (LineBreak){.isSoft = 0, .textPos = 0};
+  buffer.linesLen = 1;
+  wchar_t* text = buffer.text;
+  // i32 isStartingFromLineStart = 1;
 
-  u8 blendedR = RoundU8(lerp(fromR, toR, factor));
-  u8 blendedG = RoundU8(lerp(fromG, toG, factor));
-  u8 blendedB = RoundU8(lerp(fromB, toB, factor));
+  f32 maxWidth = screen.x - pagePadding * 2;
 
-  return (blendedR << 16) | (blendedG << 8) | (blendedB << 0);
-}
-inline u32 AlphaBlendGreyscale(u32 destination, u8 source, u32 color) {
-  u8 destR = (u8)((destination & 0xff0000) >> 16);
-  u8 destG = (u8)((destination & 0x00ff00) >> 8);
-  u8 destB = (u8)((destination & 0x0000ff) >> 0);
+  // TODO: don't use negative index as soft line-break
 
-  u8 sourceR = (u8)((color & 0xff0000) >> 16);
-  u8 sourceG = (u8)((color & 0x00ff00) >> 8);
-  u8 sourceB = (u8)((color & 0x0000ff) >> 0);
+  for (i32 i = 0; i < buffer.textLen; i++) {
+    if (text[i] == '\n') {
+      if (GetTextWidth(deviceContext, text, lineStart, i) > maxWidth) {
+        buffer.lines[buffer.linesLen++] = (LineBreak){.isSoft = 1, .textPos = wordStart};
+        lineStart = wordStart;
+      }
 
-  f32 a = ((f32)source) / 255.0f;
-  u8 blendedR = RoundU8(lerp(destR, sourceR, a));
-  u8 blendedG = RoundU8(lerp(destG, sourceG, a));
-  u8 blendedB = RoundU8(lerp(destB, sourceB, a));
+      buffer.lines[buffer.linesLen++] = (LineBreak){.isSoft = 0, .textPos = i + 1};
+      lineStart = i + 1;
 
-  return (blendedR << 16) | (blendedG << 8) | (blendedB << 0);
-}
-inline void CopyMonochromeTextureRectTo(const MyBitmap* canvas, [[maybe_unused]] const Rect* rect,
-                                        MyBitmap* sourceT, i32 offsetX, i32 offsetY,
-                                        [[maybe_unused]] u32 color) {
-  u32* row = (u32*)canvas->pixels + offsetX + offsetY * canvas->width;
-  u32* source = (u32*)sourceT->pixels + sourceT->width * (sourceT->height - 1);
-  for (i32 y = 0; y < (i32)sourceT->height; y += 1) {
-    u32* pixel = row;
-    u32* sourcePixel = source;
-    for (i32 x = 0; x < (i32)sourceT->width; x += 1) {
-      // stupid fucking logic needs to extracted outside of the loop
-      // if (*sourcePixel != 0 && (y + offsetY) > rect->y && (x + offsetX) > rect->x &&
-      //     (x + offsetX) < (rect->x + rect->width) && (y + offsetY) < (rect->y + rect->height))
-      *pixel = *sourcePixel;
-      //   *pixel = AlphaBlendGreyscale(*pixel, *sourcePixel, color);
-
-      sourcePixel += 1;
-      pixel += 1;
-    }
-    source -= sourceT->width;
-    row += canvas->width;
-  }
-}
-
-void PaintRect(MyBitmap* bitmap, i32 x, i32 y, i32 width, i32 height, u32 color) {
-  for (i32 i = x; i < x + width; i++) {
-    for (i32 j = y; j < y + height; j++) {
-      if (i >= 0 && i < (i32)bitmap->width && j < (i32)bitmap->height && j >= 0)
-        bitmap->pixels[j * bitmap->width + i] = color;
+      wordStart = i + 1;
+    } else if (text[i] == ' ') {
+      if (GetTextWidth(deviceContext, text, lineStart, i) > maxWidth) {
+        buffer.lines[buffer.linesLen++] = (LineBreak){.isSoft = 1, .textPos = wordStart};
+        lineStart = wordStart;
+      }
+      wordStart = i + 1;
     }
   }
 }
 
-void PrintFrameStats(f32 lastFrameMs) {
-  CharBuffer buff = {};
-  Append(&buff, "Frame: ");
-  if (lastFrameMs == 0)
-    AppendLine(&buff, 0);
-  else
-    AppendLine(&buff, (i32)(1000.0f / lastFrameMs));
+void Init() {
+  wchar_t* text =
+      (wchar_t*)L"foo\nbar\nLorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam "
+                L"placerat, "
+                L"neque a "
+                L"consectetur maximus, massa ex molestie est, in ornare augue nulla nec dui. Ut "
+                L"blandit sem eget tellus facilisis congue. Curabitur eget venenatis felis. "
+                L"Suspendisse laoreet tempus luctus. Quisque eu tincidunt tellus. Vivamus "
+                L"pellentesque est sed pharetra lacinia. Vestibulum rhoncus, enim et ultricies "
+                L"luctus, lorem risus tincidunt nulla, sit amet rutrum est massa ac dolor. Quisque "
+                L"id nisl vulputate, pretium odio id, blandit justo. Sed tortor erat, porttitor "
+                L"vel risus ut, molestie efficitur sem. Etiam quis velit magna. Suspendisse nec "
+                L"pellentesque mi. Suspendisse sodales in ex laoreet semper.\nOne fucking long "
+                L"line of text\nAnother one fucking long line of "
+                L"text\nOne one one one one one one one one one one one one one one one one one "
+                L"one\nThree\nFive";
 
-  Rect rect = {0, 0, (i32)screen.x, (i32)screen.y};
-  i32 x = 20;
-  i32 y = 20;
+  i32 len = wstrlen(text);
 
-  for (i32 i = 0; i < buff.len; i++) {
-    wchar_t c = buff.content[i];
-    CopyMonochromeTextureRectTo(&canvas, &rect, &regularFont.textures[c], x, y, 0xffffff);
-    x += regularFont.charWidth;
-  }
+  buffer.linesCapacity = 1024;
+  buffer.lines = (LineBreak*)valloc(buffer.linesCapacity * sizeof(LineBreak));
+
+  buffer.textCapacity = MB(2) / sizeof(wchar_t);
+  buffer.text = (wchar_t*)valloc(buffer.textCapacity * sizeof(wchar_t));
+  memcpy(buffer.text, text, len * sizeof(wchar_t));
+  buffer.textLen = len;
+
+  RebuildLines();
+  buffer.lines[buffer.linesLen++].textPos = len;
 }
 
 void UpdateAndDraw(f32 lastFrameMs) {
-  PrintFrameStats(lastFrameMs);
+  timeToCursorBlink -= lastFrameMs;
 
-  PaintRect(&canvas, 20, 200, 200, 200, 0xff2222);
+  SelectObject(deviceContext, bitmap);
+  SelectObject(deviceContext, segoe);
+  TEXTMETRIC textMetric;
+  GetTextMetrics(deviceContext, &textMetric);
+  f32 fontHeight = textMetric.tmAscent + textMetric.tmDescent;
+
+  v2 pos = {pagePadding, pagePadding};
+
+  f32 sin;
+  f32 cos;
+  SinCos((appTime - cursorBlinkStart) / 300.0f, &sin, &cos);
+  f32 a = 1;
+  if (timeToCursorBlink <= 0)
+    a = abs(cos);
+
+  i32 cursorWidth = 2;
+
+  v3 grey = {0.13, 0.13, 0.13};
+
+  v2 running = pos;
+
+  for (i32 i = 0; i < buffer.linesLen - 1; i++) {
+    i32 start = buffer.lines[i].textPos;
+    i32 end = buffer.lines[i + 1].textPos;
+    if (buffer.cursor >= start && buffer.cursor < end) {
+      SetColors(white, grey);
+      PaintRect(&canvas, 0, running.y, screen.x, fontHeight, grey);
+    } else {
+      SetColors(white, black);
+    }
+
+    TextOutW(deviceContext, running.x, running.y, buffer.text + start, end - start);
+
+    if (buffer.cursor >= start && buffer.cursor < end) {
+      i32 cursorX = running.x - cursorWidth / 2.0 +
+                    GetTextWidth(deviceContext, buffer.text, start, buffer.cursor);
+      PaintRectA(&canvas, cursorX, running.y, cursorWidth, fontHeight, 0xffffff, a);
+    }
+
+    if (buffer.lines[i + 1].isSoft)
+      running.y += fontHeight;
+    else
+      running.y += fontHeight * lineHeight;
+  }
+
+  // cursor
 
   StretchDIBits(dc, 0, 0, screen.x, screen.y, 0, 0, screen.x, screen.y, canvas.pixels, &bitmapInfo,
                 DIB_RGB_COLORS, SRCCOPY);
+}
+
+void OnCursorUpdated() {
+  timeToCursorBlink = 600;
+  cursorBlinkStart = appTime + timeToCursorBlink;
 }
 
 LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -138,16 +184,34 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       isFullscreen = !isFullscreen;
       SetFullscreen(win, isFullscreen);
     }
+    if (wParam == 'L') {
+      MoveRight(buffer, deviceContext);
+      OnCursorUpdated();
+    }
+    if (wParam == 'H') {
+      MoveLeft(buffer, deviceContext);
+      OnCursorUpdated();
+    }
+    if (wParam == 'J') {
+      MoveDown(buffer, deviceContext);
+      OnCursorUpdated();
+    }
+    if (wParam == 'K') {
+      MoveUp(buffer, deviceContext);
+      OnCursorUpdated();
+    }
     break;
   case WM_KEYUP:
     break;
   case WM_MOUSEMOVE:
+    mouse.x = LOWORD(lParam);
+    mouse.y = HIWORD(lParam);
     break;
   case WM_LBUTTONDOWN:
     break;
-  case WM_RBUTTONDOWN:
-    break;
   case WM_LBUTTONUP:
+    break;
+  case WM_RBUTTONDOWN:
     break;
   case WM_RBUTTONUP:
     break;
@@ -174,26 +238,38 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
     bitmapInfo.bmiHeader.biPlanes = 1;
     bitmapInfo.bmiHeader.biCompression = BI_RGB;
 
-    if (canvas.pixels)
-      vfree(canvas.pixels);
+    if (bitmap)
+      DeleteBitmap(bitmap);
 
-    canvas.pixels = (u32*)valloc(canvas.width * canvas.height * 4);
+    void* bits;
+    bitmap = CreateDIBSection(deviceContext, &bitmapInfo, DIB_RGB_COLORS, &bits, 0, 0);
+    canvas.pixels = (u32*)bits;
+
+    // if (canvas.pixels)
+    //   vfree(canvas.pixels);
+    //
+    // canvas.pixels = (u32*)valloc(canvas.width * canvas.height * 4);
     dc = GetDC(win);
 
     // glViewport(0, 0, screen.x, screen.y);
-    if (isRunning)
+    if (isRunning) {
+      RebuildLines();
       UpdateAndDraw(0);
+    }
     break;
   }
   return DefWindowProc(handle, message, wParam, lParam);
 }
 
 extern "C" void WinMainCRTStartup() {
+  // int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
+
   SetProcessDPIAware();
 
   win = OpenWindow(OnEvent);
 
   dc = GetDC(win);
+  deviceContext = CreateCompatibleDC(0);
 
   if (isFullscreen)
     SetFullscreen(win, isFullscreen);
@@ -205,11 +281,12 @@ extern "C" void WinMainCRTStartup() {
   i64 appStart = GetPerfCounter();
   i64 frameStart = appStart;
 
-  frameTime = 0;
+  f32 frameTime = 0;
 
-  CreateFont(&regularFont, 14, "Consolas");
+  segoe = CreateAppFont(dc, L"Segoe UI", FW_NORMAL, fontSize);
 
   isRunning = 1;
+  Init();
   UpdateAndDraw(0);
   while (isRunning) {
     MSG msg;
@@ -228,5 +305,6 @@ extern "C" void WinMainCRTStartup() {
     appTime = (f32)(frameEnd - appStart) / (f32)freq * 1000.0f;
   }
 
+  // return 0;
   ExitProcess(0);
 }
