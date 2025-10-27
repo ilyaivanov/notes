@@ -37,7 +37,8 @@ struct v2 {
 };
 
 v2 vec2(f32 x, f32 y) {
-  return (v2){x, y};
+  v2 res = {x, y};
+  return res;
 }
 
 struct vi2 {
@@ -291,11 +292,11 @@ void Append(CharBuffer* buff, const wchar_t* str) {
   }
 }
 
-// i32 abs(i32 a) {
-//   if (a < 0)
-//     return -a;
-//   return a;
-// }
+i32 abs(i32 a) {
+  if (a < 0)
+    return -a;
+  return a;
+}
 
 f32 abs(f32 a) {
   if (a < 0)

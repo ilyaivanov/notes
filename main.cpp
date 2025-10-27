@@ -461,7 +461,6 @@ extern "C" void WinMainCRTStartup() {
   // int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
 
   SetProcessDPIAware();
-
   win = OpenWindow(OnEvent);
 
   dc = GetDC(win);
