@@ -135,6 +135,16 @@ void OnCursorUpdated(AppState& app) {
   cursorBlinkStart = app.appTimeMs + timeToCursorBlink;
 }
 
+void RemoveCharFromLeft(AppState& app) {
+  if (buffer.cursor > 0) {
+    RemoveCharAt(buffer, buffer.cursor - 1);
+    buffer.cursor -= 1;
+    RebuildLines();
+    OnCursorUpdated(app);
+    UpdateDesiredOffset(buffer);
+  }
+}
+
 void AddCharAtCursor(AppState& app, u32 ch) {
   InsertCharAt(buffer, buffer.cursor, ch);
   buffer.cursor++;
@@ -151,6 +161,8 @@ void OnKeyPress(u32 code, AppState& app) {
       OnCursorUpdated(app);
     } else if (code == '\r')
       AddCharAtCursor(app, '\n');
+    else if (code == VK_BACK)
+      RemoveCharFromLeft(app);
     else
       AddCharAtCursor(app, code);
   } else {
@@ -202,13 +214,7 @@ void OnKeyPress(u32 code, AppState& app) {
       }
     }
     if (code == VK_BACK) {
-      if (buffer.cursor > 0) {
-        RemoveCharAt(buffer, buffer.cursor - 1);
-        buffer.cursor -= 1;
-        RebuildLines();
-        OnCursorUpdated(app);
-        UpdateDesiredOffset(buffer);
-      }
+      RemoveCharFromLeft(app);
     }
     if (code == '\r')
       AddCharAtCursor(app, '\n');
