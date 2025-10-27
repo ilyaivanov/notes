@@ -1,14 +1,9 @@
-fdslkfjsldkf
-Vim motions
-foo
-foo and bar
-foo
-foo
+fdslkfjsldkf Vim motions i i i i i i i i i i i i i i i i i
 fsldkfjslk dfj
 qOne sldkfj lsdkfj lsdkfj lskdfj lskdfj 
 fsaldkfjsdlfkj foo is 
 here for the long
-run
+6 run
 three and another
 one
 five

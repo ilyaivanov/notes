@@ -25,12 +25,6 @@ typedef uint64_t u64;
 typedef float f32;
 typedef double f64;
 
-struct Rect {
-  i32 x;
-  i32 y;
-  i32 width;
-  i32 height;
-};
 struct v2 {
   f32 x;
   f32 y;
@@ -83,6 +77,13 @@ struct v4 {
       f32 w;
     };
   };
+};
+
+struct AppState {
+  bool isRunning;
+  f32 appTimeMs;
+  f32 lastFrameTimeMs;
+  v2 size;
 };
 
 typedef struct MyBitmap {
@@ -146,7 +147,7 @@ HWND OpenWindow(WindowProc* proc) {
   int screenWidth = GetDeviceCaps(screenDc, HORZRES);
   //  int screenHeight = GetDeviceCaps(screenDc, VERTRES);
 
-  int width = 1200;
+  int width = 800;
   int height = 800;
 
   HWND win = CreateWindowW(windowClass.lpszClassName, L"Notes", WS_OVERLAPPEDWINDOW,
@@ -317,7 +318,9 @@ void Append(CharBuffer* buff, i32 val) {
   wchar_t temp[32];
   while (val != 0) {
     // abs because -val above can produce negative result for INT_MIN
-    temp[templen++] = L'0' + abs(val % 10);
+    i32 rem = val % 10;
+    i32 s = abs(rem);
+    temp[templen++] = L'0' + s;
     val /= 10;
   }
 

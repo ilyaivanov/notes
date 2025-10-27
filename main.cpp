@@ -449,7 +449,7 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
     // glViewport(0, 0, screen.x, screen.y);
     if (isRunning) {
       RebuildLines();
-      UpdateDesiredOffset(buffer, deviceContext);
+      UpdateDesiredOffset(buffer);
       UpdateAndDraw(0);
     }
     break;

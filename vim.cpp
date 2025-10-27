@@ -1,8 +1,23 @@
 #pragma once
-#include "slider.cpp"
+// #include "slider.cpp"
 #include "win32.cpp"
-#include "text.cpp"
+#include "drawing.cpp"
 
+f32 clamp(f32 v, f32 min, f32 max) {
+  if (v < min)
+    return min;
+  if (v > max)
+    return max;
+  return v;
+}
+
+i32 clamp(i32 v, i32 min, i32 max) {
+  if (v < min)
+    return min;
+  if (v > max)
+    return max;
+  return v;
+}
 struct LineBreak {
   // Soft line break is a text overflow break due to a limited screen width.
   // Non-soft (hard) line break is via \n
@@ -65,8 +80,8 @@ i32 FindLineEnd(Buffer& b, i32* lineIndex = 0) {
   return -1;
 }
 
-void UpdateDesiredOffset(Buffer& b, HDC dc) {
-  b.desiredOffset = GetTextWidth(dc, b.text, FindLineStart(b), b.cursor);
+void UpdateDesiredOffset(Buffer& b) {
+  b.desiredOffset = GetTextWidth(b.text, FindLineStart(b), b.cursor);
 }
 
 i32 ClampCursor(Buffer& b, i32 pos) {
@@ -76,24 +91,22 @@ i32 ClampCursor(Buffer& b, i32 pos) {
   return clamp(pos, 0, lastPos);
 }
 
-void MoveRight(Buffer& b, HDC dc) {
+void MoveRight(Buffer& b) {
   b.cursor = ClampCursor(b, b.cursor + 1);
-  UpdateDesiredOffset(b, dc);
 }
 
-void MoveLeft(Buffer& b, HDC dc) {
+void MoveLeft(Buffer& b) {
   b.cursor = ClampCursor(b, b.cursor - 1);
-  UpdateDesiredOffset(b, dc);
 }
 
-i32 FindLineOffsetByDistance(Buffer& b, HDC dc, i32 lineStart, f32 distanceFromLineStart) {
+i32 FindLineOffsetByDistance(Buffer& b, i32 lineStart, f32 distanceFromLineStart) {
   i32 offset = 0;
   for (i32 i = lineStart; i <= b.textLen; i++) {
     if (b.text[i] == '\n')
       break;
-    if (GetTextWidth(dc, b.text, lineStart, i) >= distanceFromLineStart) {
-      if (abs(GetTextWidth(dc, b.text, lineStart, i) - distanceFromLineStart) >
-          abs(GetTextWidth(dc, b.text, lineStart, i - 1) - distanceFromLineStart))
+    if (GetTextWidth(b.text, lineStart, i) >= distanceFromLineStart) {
+      if (abs(GetTextWidth(b.text, lineStart, i) - distanceFromLineStart) >
+          abs(GetTextWidth(b.text, lineStart, i - 1) - distanceFromLineStart))
         offset--;
 
       break;
@@ -103,25 +116,25 @@ i32 FindLineOffsetByDistance(Buffer& b, HDC dc, i32 lineStart, f32 distanceFromL
   return offset;
 }
 
-void MoveDown(Buffer& b, HDC dc) {
+void MoveDown(Buffer& b) {
   i32 currentLineIndex = 0;
   FindLineStart(b, &currentLineIndex);
   i32 nextLineStart = b.lines[currentLineIndex + 1].textPos;
 
   if (currentLineIndex < b.linesLen - 2)
-    b.cursor = ClampCursor(b, nextLineStart +
-                                  FindLineOffsetByDistance(b, dc, nextLineStart, b.desiredOffset));
+    b.cursor =
+        ClampCursor(b, nextLineStart + FindLineOffsetByDistance(b, nextLineStart, b.desiredOffset));
 }
 
-void MoveUp(Buffer& b, HDC dc) {
+void MoveUp(Buffer& b) {
   i32 currentLineIndex = 0;
   FindLineStart(b, &currentLineIndex);
   i32 prevLineStart = 0;
   if (currentLineIndex > 0)
     prevLineStart = b.lines[currentLineIndex - 1].textPos;
 
-  b.cursor = ClampCursor(b, prevLineStart +
-                                FindLineOffsetByDistance(b, dc, prevLineStart, b.desiredOffset));
+  b.cursor =
+      ClampCursor(b, prevLineStart + FindLineOffsetByDistance(b, prevLineStart, b.desiredOffset));
 }
 
 i32 IsWhitespace(c16 ch) {
