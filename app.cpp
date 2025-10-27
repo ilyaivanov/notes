@@ -130,6 +130,18 @@ void Init(AppState& app) {
   OnResize(app);
 }
 
+void SaveFile() {
+  i32 utf8Count = WideCharToMultiByte(CP_UTF8, 0, buffer.text, buffer.textLen, 0, 0, 0, 0);
+
+  c8* text = (c8*)valloc(utf8Count * sizeof(c8));
+  WideCharToMultiByte(CP_UTF8, 0, buffer.text, buffer.textLen, text, utf8Count, 0, 0);
+  WriteMyFile(path, text, utf8Count);
+}
+
+void Teardown(AppState& app) {
+  SaveFile();
+}
+
 void OnCursorUpdated(AppState& app) {
   timeToCursorBlink = 600;
   cursorBlinkStart = app.appTimeMs + timeToCursorBlink;

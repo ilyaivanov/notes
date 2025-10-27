@@ -105,6 +105,7 @@ extern "C" void WinMainCRTStartup() {
     frameStart = frameEnd;
     appState.appTimeMs = (f32)(frameEnd - appStart) / (f32)freq * 1000.0f;
   }
+  Teardown(appState);
 
   PostQuitMessage(0);
   ExitProcess(0);
