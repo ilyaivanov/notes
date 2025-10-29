@@ -1,5 +1,4 @@
 #pragma once
-// #include "slider.cpp"
 #include "win32.cpp"
 #include "drawing.cpp"
 

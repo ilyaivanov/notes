@@ -138,7 +138,7 @@ void SaveFile() {
   WriteMyFile(path, text, utf8Count);
 }
 
-void Teardown(AppState& app) {
+void Teardown([[maybe_unused]] AppState& app) {
   SaveFile();
 }
 
@@ -166,6 +166,33 @@ void AddCharAtCursor(AppState& app, u32 ch) {
   UpdateDesiredOffset(buffer);
 }
 
+c16 currentCommand[255];
+i32 currentCommandLen;
+
+bool IsCommand(const c16* c) {
+  if (currentCommandLen == 0)
+    return false;
+
+  i32 len = 0;
+  while (c[len] != L'\0' && c[len] == currentCommand[len]) {
+    len++;
+  }
+
+  bool res = len == currentCommandLen && c[len] == '\0';
+  if (res) {
+    currentCommandLen = 0;
+  }
+  return res;
+}
+
+bool IsCommand(c16 ch) {
+  bool res = currentCommandLen == 1 && currentCommand[0] == ch;
+  if (res) {
+    currentCommandLen = 0;
+  }
+  return res;
+}
+
 void OnKeyPress(u32 code, AppState& app) {
   if (mode == Insert) {
     if (code == VK_ESCAPE) {
@@ -178,65 +205,73 @@ void OnKeyPress(u32 code, AppState& app) {
     else
       AddCharAtCursor(app, code);
   } else {
-    if (code == 'i') {
+    currentCommand[currentCommandLen++] = code;
+
+    if (IsCommand(L"gg")) {
+      buffer.cursor = FindLineOffsetByDistance(buffer, 0, buffer.desiredOffset);
+    }
+
+    if (IsCommand(L"G")) {
+      i32 line = buffer.lines[buffer.linesLen - 2].textPos;
+      buffer.cursor = line + FindLineOffsetByDistance(buffer, line, buffer.desiredOffset);
+    }
+
+    if (IsCommand(L"i")) {
       mode = Insert;
       OnCursorUpdated(app);
     }
-    if (code == 'q') {
+    if (IsCommand(L"q")) {
       app.isRunning = false;
     }
-    if (code == 'l') {
+    if (IsCommand(L"l")) {
       MoveRight(buffer);
       UpdateDesiredOffset(buffer);
       OnCursorUpdated(app);
     }
 
-    if (code == 'h') {
+    if (IsCommand(L"h")) {
       MoveLeft(buffer);
       UpdateDesiredOffset(buffer);
       OnCursorUpdated(app);
     }
 
-    if (code == 'j') {
+    if (IsCommand(L"j")) {
       MoveDown(buffer);
       OnCursorUpdated(app);
     }
 
-    if (code == 'k') {
+    if (IsCommand(L"k")) {
       MoveUp(buffer);
       OnCursorUpdated(app);
     }
 
-    if (code == 'w') {
+    if (IsCommand(L"w")) {
       JumpWordForward(buffer);
       OnCursorUpdated(app);
       UpdateDesiredOffset(buffer);
     }
 
-    if (code == 'b') {
+    if (IsCommand(L"b")) {
       JumpWordBackward(buffer);
       UpdateDesiredOffset(buffer);
       OnCursorUpdated(app);
     }
 
-    if (code == 'x') {
+    if (IsCommand(L"x")) {
       if (buffer.cursor < buffer.textLen - 1) {
         RemoveCharAt(buffer, buffer.cursor);
         RebuildLines();
       }
     }
-    if (code == VK_BACK) {
+    if (IsCommand(VK_BACK)) {
       RemoveCharFromLeft(app);
     }
-    if (code == '\r')
+    if (IsCommand(L"\r"))
       AddCharAtCursor(app, '\n');
 
-    if (code == 'o' || code == 'O') {
+    if (IsCommand(L"O")) {
       i32 target = 0;
-      if (code == 'O')
-        target = FindLineStart(buffer);
-      else
-        target = FindLineEnd(buffer);
+      target = FindLineStart(buffer);
 
       InsertCharAt(buffer, target, '\n');
       buffer.cursor = target;
@@ -246,6 +281,24 @@ void OnKeyPress(u32 code, AppState& app) {
       OnCursorUpdated(app);
       RebuildLines();
       UpdateDesiredOffset(buffer);
+    }
+    if (IsCommand(L"o")) {
+      i32 target = 0;
+      target = FindLineEnd(buffer);
+
+      InsertCharAt(buffer, target, '\n');
+      buffer.cursor = target;
+
+      mode = Insert;
+
+      OnCursorUpdated(app);
+      RebuildLines();
+      UpdateDesiredOffset(buffer);
+    }
+
+    if (code == VK_ESCAPE) {
+
+      currentCommandLen = 0;
     }
   }
 }
@@ -305,4 +358,7 @@ void Draw(AppState& app) {
   Append(&buff, L" Desired: ");
   Append(&buff, buffer.desiredOffset);
   PrintText(10, app.size.y - fontHeight - 8, buff.content, buff.len);
+
+  SetAlign(TA_RIGHT);
+  PrintText(app.size.x - 10, app.size.y - fontHeight - 8, currentCommand, currentCommandLen);
 }
