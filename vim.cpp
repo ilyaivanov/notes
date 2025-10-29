@@ -53,6 +53,13 @@ void RemoveCharAt(Buffer& b, i32 at) {
   b.textLen--;
 }
 
+void RemoveChars(Buffer& b, i32 from, i32 to) {
+  for (i32 i = to; i < b.textLen - 1; i++) {
+    b.text[i + from - to] = b.text[i + 1];
+  }
+  b.textLen -= to - from + 1;
+}
+
 i32 FindLineStart(Buffer& b, i32* lineIndex = 0) {
   for (i32 i = 0; i < b.linesLen - 1; i++) {
     i32 start = b.lines[i].textPos;

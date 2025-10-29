@@ -1,31 +1,3 @@
-fdslkfjsldkf foo bababa foo bra Vim motions i i i i i i i i i i i i i i i i i
-fsldkfjslk dfj
-saldkfjOne sldkfj lsdkfj lsdkfj lskdfj lskdfj 
-fsaldkfjsdlfkj foo is 
-iuoiuoiu
-here for the long
-a
-lot
-of
-text
-is 
-in
-here
-for
-the
-scrolling
-a
-lot
-of
-text
-is 
-in
-here
-for
-the
-scrolling
-6 run
-three and another
-one
-five
-fooo
+Vim motions
+Things to do for the app next? 
+foo

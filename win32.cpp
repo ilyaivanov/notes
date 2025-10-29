@@ -46,6 +46,11 @@ struct v3 {
   f32 z;
 };
 
+v3 vec3(f32 x, f32 y, f32 z) {
+  v3 res = {x, y, z};
+  return res;
+}
+
 bool operator==(v3& a, v3& b) {
   return a.x == b.x && a.y == b.y && a.z == b.z;
 }

@@ -32,7 +32,7 @@ enum Mode { Normal, Insert };
 Mode mode;
 i32 fontSize = 14;
 i32 logsFontSize = 13;
-f32 lineHeight = 1.15;
+f32 hardLineHeight = 1.15;
 v3 white = {1, 1, 1};
 v3 black = {0, 0, 0};
 
@@ -185,7 +185,7 @@ v2 GetCursorPos() {
     if (buffer.lines[i + 1].isSoft)
       runningCursor.y += fontHeight;
     else
-      runningCursor.y += fontHeight * lineHeight;
+      runningCursor.y += fontHeight * hardLineHeight;
   }
   return cursorPos;
 }
@@ -231,7 +231,7 @@ void UpdateAndDraw(f32 lastFrameMs) {
     if (buffer.lines[i + 1].isSoft)
       running.y += fontHeight;
     else
-      running.y += fontHeight * lineHeight;
+      running.y += fontHeight * hardLineHeight;
   }
 
   f32 cursorHeight = fontHeight * 1.1;
