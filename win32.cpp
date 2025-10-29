@@ -31,7 +31,8 @@ struct v2 {
 };
 
 v2 vec2(f32 x, f32 y) {
-  return (v2){x, y};
+  v2 res = {x, y};
+  return res;
 }
 
 struct vi2 {
@@ -44,6 +45,11 @@ struct v3 {
   f32 y;
   f32 z;
 };
+
+v3 vec3(f32 x, f32 y, f32 z) {
+  v3 res = {x, y, z};
+  return res;
+}
 
 bool operator==(v3& a, v3& b) {
   return a.x == b.x && a.y == b.y && a.z == b.z;
@@ -78,11 +84,11 @@ struct v4 {
   };
 };
 
-struct Rect {
-  i32 x;
-  i32 y;
-  i32 width;
-  i32 height;
+struct AppState {
+  bool isRunning;
+  f32 appTimeMs;
+  f32 lastFrameTimeMs;
+  v2 size;
 };
 
 typedef struct MyBitmap {
@@ -292,11 +298,11 @@ void Append(CharBuffer* buff, const wchar_t* str) {
   }
 }
 
-// i32 abs(i32 a) {
-//   if (a < 0)
-//     return -a;
-//   return a;
-// }
+i32 abs(i32 a) {
+  if (a < 0)
+    return -a;
+  return a;
+}
 
 f32 abs(f32 a) {
   if (a < 0)
@@ -317,7 +323,9 @@ void Append(CharBuffer* buff, i32 val) {
   wchar_t temp[32];
   while (val != 0) {
     // abs because -val above can produce negative result for INT_MIN
-    temp[templen++] = L'0' + abs(val % 10);
+    i32 rem = val % 10;
+    i32 s = abs(rem);
+    temp[templen++] = L'0' + s;
     val /= 10;
   }
 

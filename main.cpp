@@ -3,16 +3,14 @@
 #define WIN32_LEAN_AND_MEAN
 #define USE_SSE2
 
-// later I will move glFunction and glProgram files here and will render everything vie opengl
-// I want to be able to have two rendering mechanisms, would be an interesting architectural task
-// #define USE_OPENGL
-
 #include "win32.cpp"
 #include "text.cpp"
 #include "sincos.cpp"
 #include "slider.cpp"
 #include "vim.cpp"
+#include "tests.cpp"
 
+const c16* path = L"sample.txt";
 f32 appTime;
 
 HWND win;
@@ -24,6 +22,7 @@ i32 isFullscreen = 0;
 v2 screen;
 v2 mouse;
 HFONT segoe;
+HFONT consolas;
 
 HBITMAP bitmap;
 BITMAPINFO bitmapInfo;
@@ -31,8 +30,9 @@ MyBitmap canvas;
 
 enum Mode { Normal, Insert };
 Mode mode;
-i32 fontSize = 15;
-f32 lineHeight = 1.2;
+i32 fontSize = 14;
+i32 logsFontSize = 13;
+f32 hardLineHeight = 1.15;
 v3 white = {1, 1, 1};
 v3 black = {0, 0, 0};
 
@@ -50,6 +50,7 @@ Buffer buffer;
 
 f32 pagePadding = 20;
 
+Rect textRect;
 void RebuildLines() {
   SelectObject(deviceContext, bitmap);
   SelectObject(deviceContext, segoe);
@@ -60,9 +61,7 @@ void RebuildLines() {
   c16* text = buffer.text;
   // i32 isStartingFromLineStart = 1;
 
-  f32 maxWidth = screen.x - pagePadding * 2;
-
-  // TODO: don't use negative index as soft line-break
+  f32 maxWidth = textRect.width - pagePadding * 2;
 
   for (i32 i = 0; i < buffer.textLen; i++) {
     if (text[i] == '\n') {
@@ -84,54 +83,134 @@ void RebuildLines() {
     }
   }
 
-  buffer.lines[buffer.linesLen++].textPos = buffer.textLen;
+  // buffer.lines[buffer.linesLen++].textPos = buffer.textLen;
 }
 
-void Init() {
-  c16* text = (c16*)L"one\ntwo";
-  // (c16*)L"foo\nbar\n"
-  // "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam "
-  // L"placerat, "
-  // L"neque a "
-  // L"consectetur maximus, massa ex molestie est, in ornare augue nulla nec dui. Ut "
-  // L"blandit sem eget tellus facilisis congue. Curabitur eget venenatis felis. "
-  // L"Suspendisse laoreet tempus luctus. Quisque eu tincidunt tellus. Vivamus "
-  // L"pellentesque est sed pharetra lacinia. Vestibulum rhoncus, enim et ultricies "
-  // L"luctus, lorem risus tincidunt nulla, sit amet rutrum est massa ac dolor. Quisque "
-  // L"id nisl vulputate, pretium odio id, blandit justo. Sed tortor erat, porttitor "
-  // L"vel risus ut, molestie efficitur sem. Etiam quis velit magna. Suspendisse nec "
-  // L"pellentesque mi. Suspendisse sodales in ex laoreet semper.\nOne fucking long "
-  // L"line of text\nAnother one fucking long line of "
-  // L"text\nOne one one one one one one one one one one one one one one one one one "
-  // L"one\nThree\nFive";
-
-  i32 len = wstrlen(text);
-
+void Init(c16* text, i32 len) {
   buffer.linesCapacity = 1024;
   buffer.lines = (LineBreak*)valloc(buffer.linesCapacity * sizeof(LineBreak));
 
   buffer.textCapacity = MB(2) / sizeof(c16);
   buffer.text = (c16*)valloc(buffer.textCapacity * sizeof(c16));
-  memcpy(buffer.text, text, len * sizeof(c16));
-  buffer.textLen = len;
+  i32 bufferPos = 0;
+  for (i32 i = 0; i < len; i++) {
+    if (text[i] != '\r') {
+      buffer.text[bufferPos] = text[i];
+      bufferPos++;
+    }
+  }
+  buffer.textLen = bufferPos;
 
   RebuildLines();
+}
+
+void PrintTests(Rect rect) {
+  i32 padding = 5;
+  i32 x = rect.x + padding;
+  i32 y = rect.y + padding;
+
+  v3 currentColor = {0.8, 0.8, 0.1};
+  v3 grayColor = {0.3, 0.3, 0.3};
+  v3 errorColor = {0.8, 0.2, 0.2};
+  v3 okColor = {0.2, 0.8, 0.2};
+
+  TEXTMETRIC textMetric;
+  GetTextMetrics(deviceContext, &textMetric);
+  f32 fontHeight = textMetric.tmAscent + textMetric.tmDescent;
+
+  SelectFont(deviceContext, consolas);
+
+  for (i32 i = 0; i < testLen; i++) {
+    if (!tests[i].hasExecuted)
+      SetColors(grayColor, black);
+    else if (tests[i].error)
+      SetColors(errorColor, black);
+    else
+      SetColors(okColor, black);
+
+    i32 len = wstrlen(tests[i].label);
+    f32 width = GetTextWidth(deviceContext, tests[i].label, 0, len);
+    TextOutW(deviceContext, x, y, tests[i].label, len);
+    if (tests[i].error) {
+      i32 errorLen = wstrlen(tests[i].error);
+      TextOutW(deviceContext, x + width + 5, y, tests[i].error, errorLen);
+    }
+    y += fontHeight * 0.8;
+  }
+}
+
+void PrintStatus(Rect r) {
+  v3 statusColor = {0.08, 0.08, 0.08};
+  PaintRect(&canvas, r.x, r.y, r.width, r.height, statusColor);
+
+  CharBuffer buff = {};
+  Append(&buff, L"Offset: ");
+  Append(&buff, GetTextWidth(deviceContext, buffer.text, FindLineStart(buffer), buffer.cursor));
+
+  Append(&buff, L"  Desired: ");
+  Append(&buff, buffer.desiredOffset);
+
+  SetColors(white, statusColor);
+  SelectFont(deviceContext, consolas);
+  TextOutW(deviceContext, r.x + 5, r.y + 3, buff.content, buff.len);
+}
+
+f32 GetFontHeight() {
+  TEXTMETRIC textMetric;
+  GetTextMetrics(deviceContext, &textMetric);
+  f32 fontHeight = textMetric.tmAscent + textMetric.tmDescent;
+  return fontHeight;
+}
+
+v2 GetCursorPos() {
+  f32 fontHeight = GetFontHeight();
+  v2 pos = {textRect.x + pagePadding, textRect.y + pagePadding};
+  v2 runningCursor = pos;
+  v2 cursorPos = {};
+
+  for (i32 i = 0; i < buffer.linesLen - 1; i++) {
+    i32 start = buffer.lines[i].textPos;
+    i32 end = (i == buffer.linesLen - 1) ? buffer.textLen : buffer.lines[i + 1].textPos;
+
+    i32 isCursorVisibleOnLine = ((buffer.cursor >= start && buffer.cursor < end) ||
+                                 (buffer.cursor == buffer.textLen && i == buffer.linesLen - 1));
+
+    if (isCursorVisibleOnLine) {
+      cursorPos.x =
+          runningCursor.x + GetTextWidth(deviceContext, buffer.text, start, buffer.cursor);
+      cursorPos.y = runningCursor.y;
+      break;
+    }
+
+    if (buffer.lines[i + 1].isSoft)
+      runningCursor.y += fontHeight;
+    else
+      runningCursor.y += fontHeight * hardLineHeight;
+  }
+  return cursorPos;
 }
 
 void UpdateAndDraw(f32 lastFrameMs) {
   timeToCursorBlink -= lastFrameMs;
 
   SelectObject(deviceContext, bitmap);
-  SelectObject(deviceContext, segoe);
+  SelectFont(deviceContext, segoe);
   TEXTMETRIC textMetric;
   GetTextMetrics(deviceContext, &textMetric);
   f32 fontHeight = textMetric.tmAscent + textMetric.tmDescent;
 
-  v2 pos = {pagePadding, pagePadding};
-
   f32 sin;
   f32 cos;
   SinCos((appTime - cursorBlinkStart) / 300.0f, &sin, &cos);
+
+  textRect = {0, 0, i32(screen.x * (testsShown ? 0.7 : 1.0)), (i32)screen.y};
+
+  f32 statusHeight = 30.0;
+  textRect.height -= statusHeight;
+
+  v2 pos = {textRect.x + pagePadding, textRect.y + pagePadding};
+  RebuildLines();
+
   f32 a = 1;
   if (timeToCursorBlink <= 0)
     a = abs(cos);
@@ -141,46 +220,42 @@ void UpdateAndDraw(f32 lastFrameMs) {
   v3 grey = {0.13, 0.13, 0.13};
   v3 cursorBgRed = {0.4, 0.1, 0.1};
 
-  u32 cursorColor = 0xffffff;
-
   v2 running = pos;
 
   for (i32 i = 0; i < buffer.linesLen - 1; i++) {
     i32 start = buffer.lines[i].textPos;
-    i32 end = buffer.lines[i + 1].textPos;
-    i32 isCursorVisibleOnLine = ((buffer.cursor >= start && buffer.cursor < end) ||
-                                 (buffer.cursor == buffer.textLen && i == buffer.linesLen - 2));
-
-    f32 cursorY = running.y;
-    f32 cursorHeight = fontHeight * 1.1;
-
-    if (isCursorVisibleOnLine) {
-      if (mode == Insert) {
-        SetColors(white, cursorBgRed);
-        PaintRect(&canvas, 0, cursorY, screen.x, cursorHeight, cursorBgRed);
-      } else {
-        SetColors(white, grey);
-        PaintRect(&canvas, 0, cursorY, screen.x, cursorHeight, grey);
-      }
-    } else {
-      SetColors(white, black);
-    }
+    i32 end = (i == buffer.linesLen - 1) ? buffer.textLen : buffer.lines[i + 1].textPos;
 
     TextOutW(deviceContext, running.x, running.y, buffer.text + start, end - start);
-
-    if (isCursorVisibleOnLine) {
-      i32 cursorX = running.x - cursorWidth / 2.0 +
-                    GetTextWidth(deviceContext, buffer.text, start, buffer.cursor);
-      PaintRectA(&canvas, cursorX, cursorY, cursorWidth, cursorHeight, cursorColor, a);
-    }
 
     if (buffer.lines[i + 1].isSoft)
       running.y += fontHeight;
     else
-      running.y += fontHeight * lineHeight;
+      running.y += fontHeight * hardLineHeight;
   }
 
-  // cursor
+  f32 cursorHeight = fontHeight * 1.1;
+  v2 cursorPos = GetCursorPos();
+
+  u32 cursorColor = 0xffffff;
+
+  if (mode == Insert)
+    cursorColor = 0xff2222;
+
+  PaintRectA(&canvas, cursorPos.x, cursorPos.y, cursorWidth, cursorHeight, cursorColor, a);
+
+  if (testsShown) {
+    Rect logRect = {textRect.x + textRect.width, textRect.y, i32(screen.x - textRect.width),
+                    (i32)screen.y};
+    PrintTests(logRect);
+  }
+
+  Rect statusRect = {.x = textRect.x,
+                     .y = i32(textRect.y + textRect.height),
+                     .width = textRect.width,
+                     .height = (i32)statusHeight};
+
+  PrintStatus(statusRect);
 
   StretchDIBits(dc, 0, 0, screen.x, screen.y, 0, 0, screen.x, screen.y, canvas.pixels, &bitmapInfo,
                 DIB_RGB_COLORS, SRCCOPY);
@@ -189,6 +264,25 @@ void UpdateAndDraw(f32 lastFrameMs) {
 void OnCursorUpdated() {
   timeToCursorBlink = 600;
   cursorBlinkStart = appTime + timeToCursorBlink;
+}
+
+void RemovePrevChar() {
+  if (buffer.cursor > 0) {
+    RemoveCharAt(buffer, buffer.cursor - 1);
+
+    buffer.cursor--;
+    OnCursorUpdated();
+    RebuildLines();
+    UpdateDesiredOffset(buffer, deviceContext);
+  }
+}
+
+void SaveFile() {
+  i32 utf8Count = WideCharToMultiByte(CP_UTF8, 0, buffer.text, buffer.textLen, 0, 0, 0, 0);
+
+  c8* text = (c8*)valloc(utf8Count * sizeof(c8));
+  WideCharToMultiByte(CP_UTF8, 0, buffer.text, buffer.textLen, text, utf8Count, 0, 0);
+  WriteMyFile(path, text, utf8Count);
 }
 
 i32 ignoreNextCharEvent = 0;
@@ -200,20 +294,27 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       if (ignoreNextCharEvent)
         ignoreNextCharEvent = 0;
       else {
-        if (wParam == '\r')
-          InsertCharAt(buffer, buffer.cursor, '\n');
-        else
-          InsertCharAt(buffer, buffer.cursor, wParam);
-        buffer.cursor++;
-        RebuildLines();
-        UpdateDesiredOffset(buffer, deviceContext);
+        if (wParam == VK_BACK)
+          RemovePrevChar();
+        else {
+          if (wParam == '\r')
+            InsertCharAt(buffer, buffer.cursor, '\n');
+          else
+            InsertCharAt(buffer, buffer.cursor, wParam);
+
+          buffer.cursor++;
+          RebuildLines();
+          UpdateDesiredOffset(buffer, deviceContext);
+        }
       }
     }
     break;
   }
   case WM_KEYDOWN:
+    SelectFont(deviceContext, segoe);
     if (mode == Normal) {
       if (wParam == 'Q') {
+        SaveFile();
         PostQuitMessage(0);
         isRunning = 0;
       }
@@ -240,7 +341,52 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       if (wParam == 'W') {
         JumpWordForward(buffer);
         OnCursorUpdated();
+        UpdateDesiredOffset(buffer, deviceContext);
       }
+      if (wParam == 'B') {
+        JumpWordBackward(buffer);
+        OnCursorUpdated();
+        UpdateDesiredOffset(buffer, deviceContext);
+      }
+      if (wParam == 'X') {
+        RemoveCharAt(buffer, buffer.cursor);
+
+        OnCursorUpdated();
+        RebuildLines();
+        UpdateDesiredOffset(buffer, deviceContext);
+      }
+      if (wParam == 'O') {
+        i32 target = 0;
+        if (IsKeyPressed(VK_SHIFT))
+          target = FindLineStart(buffer);
+        else
+          target = FindLineEnd(buffer);
+
+        InsertCharAt(buffer, target, '\n');
+        buffer.cursor = target;
+
+        mode = Insert;
+        ignoreNextCharEvent = 1;
+
+        OnCursorUpdated();
+        RebuildLines();
+        UpdateDesiredOffset(buffer, deviceContext);
+      }
+      if (wParam == VK_BACK) {
+        RemovePrevChar();
+      }
+      if (wParam == 'T') {
+        RunTests();
+      }
+      if (wParam == '\r') {
+        InsertCharAt(buffer, buffer.cursor, '\n');
+        buffer.cursor++;
+
+        OnCursorUpdated();
+        RebuildLines();
+        UpdateDesiredOffset(buffer, deviceContext);
+      }
+
       if (wParam == 'I') {
         mode = Insert;
         ignoreNextCharEvent = 1;
@@ -303,7 +449,7 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
     // glViewport(0, 0, screen.x, screen.y);
     if (isRunning) {
       RebuildLines();
-      UpdateDesiredOffset(buffer, deviceContext);
+      UpdateDesiredOffset(buffer);
       UpdateAndDraw(0);
     }
     break;
@@ -315,7 +461,6 @@ extern "C" void WinMainCRTStartup() {
   // int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) {
 
   SetProcessDPIAware();
-
   win = OpenWindow(OnEvent);
 
   dc = GetDC(win);
@@ -334,9 +479,19 @@ extern "C" void WinMainCRTStartup() {
   f32 frameTime = 0;
 
   segoe = CreateAppFont(dc, L"Segoe UI", FW_NORMAL, fontSize);
+  consolas = CreateAppFont(dc, L"Consolas", FW_NORMAL, logsFontSize);
 
   isRunning = 1;
-  Init();
+
+  i64 size = GetMyFileSize(path);
+  c8* file = (c8*)valloc(size);
+  ReadFileInto(path, size, file);
+  i32 wideCharsCount = MultiByteToWideChar(CP_UTF8, MB_PRECOMPOSED, file, size, 0, 0);
+  c16* text = (c16*)valloc(wideCharsCount * sizeof(c16));
+  MultiByteToWideChar(CP_UTF8, MB_PRECOMPOSED, file, size, text, wideCharsCount);
+  Init(text, wideCharsCount);
+  InitTests();
+
   UpdateAndDraw(0);
   while (isRunning) {
     MSG msg;
