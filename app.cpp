@@ -389,13 +389,24 @@ void OnKeyPress(u32 code, AppState& app) {
     }
 
     if (IsCommand(L"w")) {
-      JumpWordForward(buffer);
+      buffer.cursor = JumpWordForward(buffer);
       OnCursorUpdated(app);
       UpdateDesiredOffset(buffer);
     }
 
     if (IsCommand(L"b")) {
-      JumpWordBackward(buffer);
+      buffer.cursor = JumpWordBackward(buffer);
+      UpdateDesiredOffset(buffer);
+      OnCursorUpdated(app);
+    }
+    if (IsCommand(L"W")) {
+      buffer.cursor = JumpWordForwardIgnorePunctuation(buffer);
+      OnCursorUpdated(app);
+      UpdateDesiredOffset(buffer);
+    }
+
+    if (IsCommand(L"B")) {
+      buffer.cursor = JumpWordBackwardIgnorePunctuation(buffer);
       UpdateDesiredOffset(buffer);
       OnCursorUpdated(app);
     }

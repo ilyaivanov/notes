@@ -143,12 +143,36 @@ void MoveUp(Buffer& b) {
       ClampCursor(b, prevLineStart + FindLineOffsetByDistance(b, prevLineStart, b.desiredOffset));
 }
 
+i32 Max(i32 a, i32 b) {
+  if (a > b)
+    return a;
+  return b;
+}
+
+u32 IsAlphaNumeric(c16 ch) {
+  return (ch >= L'0' && ch <= L'9') || (ch >= L'a' && ch <= L'z') || (ch >= L'A' && ch <= L'Z');
+}
+
 i32 IsWhitespace(c16 ch) {
   return ch == L' ' || ch == L'\n';
 }
 
+u32 IsPunctuation(c16 ch) {
+  // use a lookup table
+  const c16* punctuation = L"!\"#$%&'()*+,-./:;<=>?@[\\]^`{|}~";
+
+  const c16* p = punctuation;
+  while (*p) {
+    if (ch == *p) {
+      return 1;
+    }
+    p++;
+  }
+  return 0;
+}
+
 // one two three four five   six sever
-void JumpWordForward(Buffer& b) {
+i32 JumpWordForwardIgnorePunctuation(Buffer& b) {
   if (IsWhitespace(b.text[b.cursor])) {
     while (IsWhitespace(b.text[b.cursor]) && b.cursor <= b.textLen)
       b.cursor++;
@@ -161,10 +185,10 @@ void JumpWordForward(Buffer& b) {
 
   while (b.text[b.cursor] == ' ' && b.cursor <= b.textLen)
     b.cursor++;
-  b.cursor = ClampCursor(b, b.cursor);
+  return ClampCursor(b, b.cursor);
 }
 
-void JumpWordBackward(Buffer& b) {
+i32 JumpWordBackwardIgnorePunctuation(Buffer& b) {
   b.cursor = ClampCursor(b, b.cursor - 1);
 
   if (IsWhitespace(b.text[b.cursor])) {
@@ -178,5 +202,52 @@ void JumpWordBackward(Buffer& b) {
   if (b.cursor != 0)
     b.cursor++;
 
-  b.cursor = ClampCursor(b, b.cursor);
+  return ClampCursor(b, b.cursor);
+}
+
+i32 JumpWordBackward(Buffer& buffer) {
+  c16* text = buffer.text;
+  i32 pos = Max(buffer.cursor - 1, 0);
+  i32 isStartedAtWhitespace = IsWhitespace(text[pos]);
+
+  while (pos > 0 && IsWhitespace(text[pos]))
+    pos--;
+
+  if (IsAlphaNumeric(text[pos])) {
+    while (pos > 0 && IsAlphaNumeric(text[pos]))
+      pos--;
+  } else {
+    while (pos > 0 && IsPunctuation(text[pos]))
+      pos--;
+  }
+  pos++;
+
+  if (!isStartedAtWhitespace) {
+    while (pos > 0 && IsWhitespace(text[pos]))
+      pos--;
+  }
+
+  return pos;
+}
+
+i32 JumpWordForward(Buffer& buffer) {
+  c16* text = buffer.text;
+  i32 pos = buffer.cursor;
+  i32 size = buffer.textLen;
+  if (IsWhitespace(text[pos])) {
+    while (pos < size && IsWhitespace(text[pos]))
+      pos++;
+  } else {
+    if (!IsPunctuation(text[pos]) && !IsWhitespace(text[pos])) {
+      while (pos < size && !IsPunctuation(text[pos]) && !IsWhitespace(text[pos]))
+        pos++;
+    } else {
+      while (pos < size && IsPunctuation(text[pos]))
+        pos++;
+    }
+    while (pos < size && IsWhitespace(text[pos]))
+      pos++;
+  }
+
+  return pos;
 }

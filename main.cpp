@@ -3,7 +3,6 @@
 
 int len(char* str) {
   int res = 0;
-
   while (str[res])
     res++;
   return res;
