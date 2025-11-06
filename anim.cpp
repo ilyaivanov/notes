@@ -10,7 +10,7 @@ float stiffness;
 float damping;
 
 void InitAnimations() {
-  stiffness = 3200;
+  stiffness = 620;
   damping = 80;
 }
 

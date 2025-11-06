@@ -6,8 +6,8 @@ REM set linker=-Xlinker /subsystem:windows
 
 set common=-Wall -Wextra
 
-set conf=-O3 
-rem set conf=-g
+rem set conf=-O3 
+ set conf=-g
 
 if not exist build mkdir build
 

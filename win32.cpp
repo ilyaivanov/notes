@@ -2,6 +2,7 @@
 
 #include <math.h>
 #include <dwmapi.h>
+#include <processthreadsapi.h>
 #include <stdint.h>
 #include <windows.h>
 #include <windowsx.h>
@@ -310,7 +311,11 @@ f32 abs(f32 a) {
   return a;
 }
 
-void Append(CharBuffer* buff, i32 val) {
+i32 round(f32 a) {
+  return i32(a + 0.5);
+}
+
+void Append(CharBuffer* buff, i64 val) {
   if (val < 0) {
     AddChar(buff, L'-');
     val = -val;
@@ -333,13 +338,17 @@ void Append(CharBuffer* buff, i32 val) {
     AddChar(buff, temp[i]);
 }
 
+void Append(CharBuffer* buff, i32 val) {
+  Append(buff, (i64)val);
+}
+
 void Append(CharBuffer* buff, f32 val) {
   if (val != val)
     Append(buff, L"NaN");
   else {
-    Append(buff, (i32)val);
+    Append(buff, (i64)val);
     AddChar(buff, L'.');
-    Append(buff, (i32)((val - (i32)val) * 10));
+    Append(buff, (i64)((val - (i64)val) * 10));
   }
 }
 
@@ -348,6 +357,7 @@ void Append(CharBuffer* buff, v2 vec) {
   Append(buff, L",");
   Append(buff, vec.y);
 }
+
 void Append(CharBuffer* buff, v3 vec) {
   Append(buff, vec.x);
   Append(buff, L",");
@@ -356,19 +366,23 @@ void Append(CharBuffer* buff, v3 vec) {
   Append(buff, vec.z);
 }
 
+inline void AppendLine(CharBuffer* buff) {
+  AddChar(buff, L'\n');
+}
+
 void AppendLine(CharBuffer* buff, v2 vec) {
   Append(buff, vec);
-  AddChar(buff, '\n');
+  AppendLine(buff);
 }
 
 void AppendLine(CharBuffer* buff, v3 vec) {
   Append(buff, vec);
-  AddChar(buff, '\n');
+  AppendLine(buff);
 }
 
 void AppendLine(CharBuffer* buff, const wchar_t* str) {
   Append(buff, str);
-  AddChar(buff, L'\n');
+  AppendLine(buff);
 }
 
 void AppendLine(CharBuffer* buff, f32 val) {
@@ -379,10 +393,52 @@ void AppendLine(CharBuffer* buff, f32 val) {
     AddChar(buff, L'.');
     Append(buff, (i32)((val - (i32)val) * 10));
   }
-  AddChar(buff, '\n');
+  AppendLine(buff);
 }
 
 void AppendLine(CharBuffer* buff, i32 val) {
   Append(buff, val);
-  AddChar(buff, L'\n');
+  AppendLine(buff);
+}
+
+void RunCommand(char* cmd, char* output, u32* len) {
+  *len = 0;
+  HANDLE hRead, hWrite;
+  SECURITY_ATTRIBUTES sa = {sizeof(SECURITY_ATTRIBUTES), NULL, TRUE};
+
+  if (!CreatePipe(&hRead, &hWrite, &sa, KB(128)))
+    return;
+
+  // Ensure the read handle to the pipe is not inherited.
+  SetHandleInformation(hRead, HANDLE_FLAG_INHERIT, 0);
+
+  PROCESS_INFORMATION pi;
+  STARTUPINFOA si = {};
+  si.cb = sizeof(STARTUPINFOA);
+  si.dwFlags = STARTF_USESTDHANDLES;
+  si.hStdOutput = hWrite;
+  si.hStdError = hWrite;
+  si.hStdInput = NULL;
+
+  if (!CreateProcessA(NULL, cmd, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+    CloseHandle(hWrite);
+    CloseHandle(hRead);
+    return;
+  }
+
+  CloseHandle(hWrite);
+
+  WaitForSingleObject(pi.hProcess, INFINITE);
+
+  DWORD bytesRead = 0, totalRead = 0;
+  while (ReadFile(hRead, output + totalRead, 1, &bytesRead, NULL) && totalRead < *len - 1) {
+    totalRead += bytesRead;
+  }
+
+  output[totalRead] = '\0';
+  *len = totalRead;
+
+  CloseHandle(pi.hProcess);
+  CloseHandle(pi.hThread);
+  CloseHandle(hRead);
 }

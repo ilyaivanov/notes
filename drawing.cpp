@@ -85,7 +85,7 @@ void PaintRect(Rect rect, v4 c) {
   }
 }
 
-HFONT CreateAppFont(const wchar_t* name, i32 weight, i32 fontSize) {
+HFONT CreateAppFont(const wchar_t* name, i32 weight, i32 fontSize, u32 quality) {
   int h = -MulDiv(fontSize, GetDeviceCaps(currentDc, LOGPIXELSY), USER_DEFAULT_SCREEN_DPI);
   HFONT font = CreateFontW(h, 0, 0, 0,
                            weight, // Weight
@@ -99,7 +99,8 @@ HFONT CreateAppFont(const wchar_t* name, i32 weight, i32 fontSize) {
                            // ANTIALIASED_QUALITY,
                            // I'm experiencing troubles with LCD font rendering and
                            // setting a custom color for a shader
-                           CLEARTYPE_QUALITY,
+                           // CLEARTYPE_QUALITY,
+                           quality,
 
                            DEFAULT_PITCH, name);
   return font;
@@ -128,6 +129,10 @@ void UseFont(HFONT font) {
 
 void PrintText(i32 x, i32 y, wchar_t* text, i32 size) {
   TextOutW(currentDc, x, y, text, size);
+}
+
+void PrintText(i32 x, i32 y, char* text, i32 size) {
+  TextOutA(currentDc, x, y, text, size);
 }
 
 f32 GetFontHeight() {

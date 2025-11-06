@@ -4,16 +4,19 @@
 #include "vim.cpp"
 #include "sincos.cpp"
 #include "anim.cpp"
+#include "utils.cpp"
 
-const wchar_t* path = L"sample.txt";
+const wchar_t* path = L"main.cpp";
 
 enum Mode { Normal, Insert };
+
 Mode mode = Normal;
 i32 fontSize = 14;
 f32 hardLineHeight = 1.1;
 f32 softLineHeight = 0.9;
 
 HFONT segoe;
+HFONT consolas;
 v2 pos = {300, 300};
 Buffer buffer = {};
 v3 bg = {0.2, 0.4, 0.2};
@@ -24,12 +27,17 @@ v3 grey = {0.4, 0.4, 0.4};
 v3 black = {0, 0, 0};
 Spring scrollOffset;
 
+i64 buildTime;
+i64 formatTime;
 Rect textArea;
-v2 pagePadding = {40, 10};
+v2 pagePadding = {60, 10};
 f32 pageHeight;
 
 f32 timeToCursorBlink = 1000;
 f32 cursorBlinkStart = 0;
+
+char* out;
+u32 len = 0;
 
 void AddHardLineBreak(i32 at) {
   buffer.lines[buffer.linesLen].textPos = at;
@@ -113,8 +121,14 @@ void OnResize(AppState& app) {
 
 void Init(AppState& app) {
   InitAnimations();
-  segoe = CreateAppFont(L"Segoe UI", FW_NORMAL, 14);
-  UseFont(segoe);
+
+  out = (char*)valloc(2000);
+
+  segoe = CreateAppFont(L"Segoe UI", FW_NORMAL, 14, CLEARTYPE_QUALITY);
+  consolas = CreateAppFont(L"Consolas", FW_NORMAL, 14, ANTIALIASED_QUALITY);
+  // consolasAliased = CreateAppFont(L"Consolas", FW_NORMAL, 14, ANTIALIASED_QUALITY);
+
+  UseFont(consolas);
 
   i64 size = GetMyFileSize(path);
   c8* file = (c8*)valloc(size);
@@ -219,12 +233,23 @@ bool IsCommand(c16 ch) {
   return res;
 }
 
+f32 ClampScrollOffset(f32 offset) {
+  if (offset < 0)
+    return 0;
+  return offset;
+}
+
 void ScrollIntoCursor() {
   v2 p = GetCursorPos();
 
   f32 cursorY = p.y;
 
-  scrollOffset.target = cursorY - textArea.height / 2.0f + GetFontHeight() / 2.0f;
+  scrollOffset.target =
+      ClampScrollOffset(cursorY - textArea.height / 2.0f + GetFontHeight() / 2.0f);
+}
+
+void FormatCode() {
+  SaveFile();
 }
 
 void OnKeyPress(u32 code, AppState& app) {
@@ -245,8 +270,37 @@ void OnKeyPress(u32 code, AppState& app) {
     if (IsCommand(L"gg")) {
       buffer.cursor = FindLineOffsetByDistance(buffer, 0, buffer.desiredOffset);
     }
+
+    if (IsCommand(L"r")) {
+      SaveFile();
+
+      i64 start = GetPerfCounter();
+      char* buildOut = (char*)valloc(2000);
+      u32 buildOutLen = 0;
+      RunCommand((char*)"clang main.cpp -Xlinker /NODEFAULTLIB -Xlinker /entry:mainCRTStartup "
+                        "-Xlinker /subsystem:console -o main.exe -lkernel32 ",
+                 buildOut, &buildOutLen);
+
+      // RunCommand((char*)"cl main.cpp /link /nodefaultlib /subsystem:console kernel32.lib",
+      // buildOut, &buildOutLen);
+
+      RunCommand((char*)"./main.exe", out, &len);
+      buildTime = (i64)round((GetPerfCounter() - start) / (f32)GetPerfFrequency() * 1000.0f);
+    }
+    if (IsCommand(L"f")) {
+      SaveFile();
+      formatTime = RunClangFormat((c16*)path, buffer);
+      RebuildLines();
+    }
+
     if (IsCommand(L"zz")) {
       ScrollIntoCursor();
+    }
+    if (IsCommand(L"vv")) {
+      i64 size = GetMyFileSize(path);
+      c8* file = (c8*)valloc(size);
+      ReadFileInto(path, size, file);
+      vfree(file);
     }
 
     if (IsCommand(L"G")) {
@@ -388,6 +442,7 @@ void OnKeyPress(u32 code, AppState& app) {
     if (!isPartialMatch) {
       currentCommandLen = 0;
     }
+
     if (code == VK_ESCAPE) {
       currentCommandLen = 0;
     }
@@ -395,6 +450,8 @@ void OnKeyPress(u32 code, AppState& app) {
 }
 
 void Draw(AppState& app) {
+  UseFont(consolas);
+
   timeToCursorBlink -= app.lastFrameTimeMs;
   f32 fontHeight = GetFontHeight();
 
@@ -411,13 +468,13 @@ void Draw(AppState& app) {
 
       SetColors(grey, black);
       SetAlign(TA_RIGHT);
-      PrintText(running.x - 10, running.y, lineBuff.content, lineBuff.len);
+      PrintText(running.x - 10, round(running.y), lineBuff.content, lineBuff.len);
       line++;
     }
 
     SetColors(white, black);
     SetAlign(TA_LEFT);
-    PrintText(running.x, running.y, buffer.text + start, end - start);
+    PrintText(running.x, round(running.y), buffer.text + start, end - start);
 
     if (buffer.lines[i + 1].isSoft)
       running.y += fontHeight * softLineHeight;
@@ -458,15 +515,36 @@ void Draw(AppState& app) {
 
   PaintRect(cursorRect, cursorColor);
 
-  // CharBuffer buff = {};
-  // Append(&buff, L"Offset: ");
+  CharBuffer buff = {};
+  Append(&buff, L"Build: ");
+  Append(&buff, buildTime);
+  Append(&buff, L"ms");
+  Append(&buff, L" Fmt: ");
+  Append(&buff, formatTime);
+  Append(&buff, L"ms");
+  SetAlign(TA_RIGHT);
+  PrintText(app.size.x - 10, app.size.y - fontHeight - 8, buff.content, buff.len);
+
   // Append(&buff, GetTextWidth(buffer.text, FindLineStart(buffer), buffer.cursor));
   // Append(&buff, L" Desired: ");
-  // Append(&buff, buffer.desiredOffset);
-  // PrintText(400, app.size.y - fontHeight - 8, buff.content, buff.len);
+  //
+
+  if (len > 0) {
+    SetAlign(TA_RIGHT);
+    i32 lineStart = 0;
+    f32 y = 20;
+
+    for (u32 i = 0; i < len; i++) {
+      if (out[i] == '\n' || i == len - 1) {
+        PrintText(app.size.x - 20, y, out + lineStart, i - lineStart + 1);
+        lineStart = i + 1;
+        y += fontHeight * hardLineHeight;
+      }
+    }
+  }
 
   SetAlign(TA_RIGHT);
-  PrintText(app.size.x - 10, app.size.y - fontHeight - 8, currentCommand, currentCommandLen);
+  PrintText(app.size.x - 10, app.size.y - fontHeight * 2 - 8, currentCommand, currentCommandLen);
 
   UpdateSpring(&scrollOffset, app.lastFrameTimeMs / 1000.0f);
 }
