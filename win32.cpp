@@ -491,18 +491,18 @@ void ClipboardCopy(HWND window, wchar_t* text, i32 len) {
   if (OpenClipboard(window)) {
     EmptyClipboard();
 
-    HGLOBAL hClipboardData = GlobalAlloc(GMEM_DDESHARE, len + 1);
+    HGLOBAL hClipboardData = GlobalAlloc(GMEM_DDESHARE, (len + 1) * sizeof(c16));
 
-    char* pchData = (char*)GlobalLock(hClipboardData);
+    c16* pchData = (c16*)GlobalLock(hClipboardData);
 
     for (i32 i = 0; i < len; i++) {
-      pchData[i] = (u8)text[i];
+      pchData[i] = text[i];
     }
-    pchData[len] = '\0';
+    pchData[len] = L'\0';
 
     GlobalUnlock(hClipboardData);
 
-    SetClipboardData(CF_TEXT, hClipboardData);
+    SetClipboardData(CF_UNICODETEXT, hClipboardData);
 
     CloseClipboard();
   }
