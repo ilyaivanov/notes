@@ -73,6 +73,7 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
 extern "C" void WinMainCRTStartup() {
   SetProcessDPIAware();
   win = OpenWindow(OnEvent);
+  appState.window = win;
   ShowWindow(win, SW_SHOW);
 
   windowDc = GetDC(win);

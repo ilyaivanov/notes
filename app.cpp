@@ -8,7 +8,7 @@
 
 const wchar_t* path = L"main.cpp";
 
-enum Mode { Normal, Insert };
+enum Mode { Normal, Insert, VisualLine, Visual };
 
 Mode mode = Normal;
 i32 fontSize = 14;
@@ -252,8 +252,98 @@ void FormatCode() {
   SaveFile();
 }
 
+bool HasNewLine(c16* text) {
+  int i = 0;
+  while (text[i]) {
+    if (text[i] == '\n')
+      return true;
+    i++;
+  }
+  return false;
+}
+
+void HandleMotions(AppState& app) {
+
+  if (IsCommand(L"j")) {
+    MoveDown(buffer);
+    OnCursorUpdated(app);
+  }
+
+  if (IsCommand(L"k")) {
+    MoveUp(buffer);
+    OnCursorUpdated(app);
+  }
+}
 void OnKeyPress(u32 code, AppState& app) {
-  if (mode == Insert) {
+  if (mode == VisualLine) {
+
+    isPartialMatch = false;
+    currentCommand[currentCommandLen++] = code;
+
+    if (code == VK_ESCAPE) {
+      mode = Normal;
+    }
+
+    HandleMotions(app);
+
+    if (IsCommand(L"d")) {
+      i32 selStart = Min(buffer.cursor, buffer.selectionStart);
+      i32 selEnd = Max(buffer.cursor, buffer.selectionStart);
+      i32 selStartLine = FindLineStartFrom(buffer, selStart);
+      i32 selEndLine = FindLineEndFrom(buffer, selEnd);
+      RemoveChars(buffer, selStartLine, selEndLine - 1);
+      buffer.cursor = ClampCursor(buffer, selStartLine - 1);
+      mode = Normal;
+      RebuildLines();
+    }
+
+    if (IsCommand(L"c")) {
+      i32 selStart = Min(buffer.cursor, buffer.selectionStart);
+      i32 selEnd = Max(buffer.cursor, buffer.selectionStart);
+      i32 selStartLine = FindLineStartFrom(buffer, selStart);
+      i32 selEndLine = FindLineEndFrom(buffer, selEnd);
+      RemoveChars(buffer, selStartLine, selEndLine - 1);
+      buffer.cursor = selStartLine - 1;
+      buffer.cursor = selStartLine - 1;
+      mode = Insert;
+      RebuildLines();
+    }
+
+    if (IsCommand(L"y")) {
+      i32 selStart = Min(buffer.cursor, buffer.selectionStart);
+      i32 selEnd = Max(buffer.cursor, buffer.selectionStart);
+      i32 selStartLine = FindLineStartFrom(buffer, selStart);
+      i32 selEndLine = FindLineEndFrom(buffer, selEnd);
+      ClipboardCopy(app.window, buffer.text + selStartLine, selEndLine - selStartLine);
+      mode = Normal;
+    }
+
+    if (!isPartialMatch) {
+      currentCommandLen = 0;
+    }
+
+    if (code == VK_ESCAPE) {
+      currentCommandLen = 0;
+    }
+  } else if (mode == Visual) {
+
+    isPartialMatch = false;
+    currentCommand[currentCommandLen++] = code;
+
+    if (code == VK_ESCAPE) {
+      mode = Normal;
+    }
+
+    HandleMotions(app);
+
+    if (!isPartialMatch) {
+      currentCommandLen = 0;
+    }
+
+    if (code == VK_ESCAPE) {
+      currentCommandLen = 0;
+    }
+  } else if (mode == Insert) {
     if (code == VK_ESCAPE) {
       mode = Normal;
       OnCursorUpdated(app);
@@ -267,8 +357,36 @@ void OnKeyPress(u32 code, AppState& app) {
     isPartialMatch = false;
     currentCommand[currentCommandLen++] = code;
 
+    if (IsCommand(L"V")) {
+      mode = VisualLine;
+      buffer.selectionStart = buffer.cursor;
+    }
+
+    if (IsCommand(L"v")) {
+      mode = Visual;
+      buffer.selectionStart = buffer.cursor;
+    }
+
     if (IsCommand(L"gg")) {
       buffer.cursor = FindLineOffsetByDistance(buffer, 0, buffer.desiredOffset);
+    }
+
+    if (IsCommand(L"p")) {
+      c16* text = (c16*)L"word ";
+      i32 len = 5;
+      // c16* text = (c16*)L"hello there\n";
+      i32 at = buffer.cursor;
+      i32 cursorPos = at + len;
+      bool hasNewLine = HasNewLine(text);
+      if (hasNewLine) {
+        at = FindLineEndFrom(buffer, at);
+        cursorPos = at;
+      }
+
+      InsertCharsAt(buffer, at, text, len);
+      buffer.cursor = cursorPos;
+      RebuildLines();
+      // buffer.cursor = FindLineOffsetByDistance(buffer, 0, buffer.desiredOffset);
     }
 
     if (IsCommand(L"r")) {
@@ -287,6 +405,7 @@ void OnKeyPress(u32 code, AppState& app) {
       RunCommand((char*)"./main.exe", out, &len);
       buildTime = (i64)round((GetPerfCounter() - start) / (f32)GetPerfFrequency() * 1000.0f);
     }
+
     if (IsCommand(L"f")) {
       SaveFile();
       formatTime = RunClangFormat((c16*)path, buffer);
@@ -295,12 +414,6 @@ void OnKeyPress(u32 code, AppState& app) {
 
     if (IsCommand(L"zz")) {
       ScrollIntoCursor();
-    }
-    if (IsCommand(L"vv")) {
-      i64 size = GetMyFileSize(path);
-      c8* file = (c8*)valloc(size);
-      ReadFileInto(path, size, file);
-      vfree(file);
     }
 
     if (IsCommand(L"G")) {
@@ -332,6 +445,46 @@ void OnKeyPress(u32 code, AppState& app) {
       RebuildLines();
     }
 
+    if (IsCommand(L"ci\"") || IsCommand(L"cis")) {
+      i32 lineStart = FindLineStart(buffer);
+      i32 quoteLeft = -1;
+      i32 quoteRight = -1;
+      for (i32 i = buffer.cursor; i >= lineStart; i--) {
+
+        if (buffer.text[i] == L'"') {
+          quoteLeft = i;
+          break;
+        }
+      }
+      for (i32 i = buffer.cursor; i < buffer.textLen; i++) {
+        if (buffer.text[i] == L'"') {
+          quoteRight = i;
+          break;
+        }
+      }
+
+      if (quoteRight != -1) {
+        if (quoteLeft == -1) {
+          quoteLeft = quoteRight;
+
+          for (i32 i = quoteLeft + 1; i < buffer.textLen; i++) {
+            if (buffer.text[i] == L'"') {
+              quoteRight = i;
+              break;
+            }
+          }
+        }
+
+        if (quoteRight != -1) {
+          RemoveChars(buffer, quoteLeft + 1, quoteRight - 1);
+          buffer.cursor = ClampCursor(buffer, quoteLeft + 1);
+          OnCursorUpdated(app);
+          RebuildLines();
+          mode = Insert;
+        }
+      }
+    }
+
     if (IsCommand(L"cc") || IsCommand(L"cl")) {
       i32 lineStart = FindLineStart(buffer);
       i32 lineEnd = FindLineEnd(buffer);
@@ -342,6 +495,7 @@ void OnKeyPress(u32 code, AppState& app) {
 
       mode = Insert;
     }
+
     if (IsCommand(L"C")) {
       i32 lineEnd = FindLineEnd(buffer);
       RemoveChars(buffer, buffer.cursor, lineEnd - 2);
@@ -372,10 +526,10 @@ void OnKeyPress(u32 code, AppState& app) {
       OnCursorUpdated(app);
     }
     if (IsCommand(L'J')) {
-      scrollOffset.target += 20;
+      scrollOffset.target += GetFontHeight() * 3;
     }
     if (IsCommand(L'K')) {
-      scrollOffset.target -= 20;
+      scrollOffset.target -= GetFontHeight() * 3;
     }
 
     if (IsCommand(L"j")) {
@@ -470,6 +624,10 @@ void Draw(AppState& app) {
   CharBuffer lineBuff = {};
   i32 line = 1;
 
+  i32 selStart = Min(buffer.cursor, buffer.selectionStart);
+  i32 selEnd = Max(buffer.cursor, buffer.selectionStart);
+  i32 selStartLine = FindLineStartFrom(buffer, selStart);
+  i32 selEndLine = FindLineEndFrom(buffer, selEnd);
   for (i32 i = 0; i < buffer.linesLen - 1; i++) {
     i32 start = buffer.lines[i].textPos;
     i32 end = (i == buffer.linesLen - 1) ? buffer.textLen : buffer.lines[i + 1].textPos;
@@ -479,12 +637,22 @@ void Draw(AppState& app) {
 
       SetColors(grey, black);
       SetAlign(TA_RIGHT);
+
       PrintText(running.x - 10, round(running.y), lineBuff.content, lineBuff.len);
       line++;
     }
 
     SetColors(white, black);
     SetAlign(TA_LEFT);
+
+    if (mode == VisualLine) {
+
+      i32 isLineInRange =
+          (selStartLine <= start && start < selEndLine) || (selStartLine < end && end < selEndLine);
+
+      if (isLineInRange)
+        SetColors(white, grey);
+    }
     PrintText(running.x, round(running.y), buffer.text + start, end - start);
 
     if (buffer.lines[i + 1].isSoft)
@@ -527,7 +695,11 @@ void Draw(AppState& app) {
   PaintRect(cursorRect, cursorColor);
 
   CharBuffer buff = {};
-  Append(&buff, L"Build: ");
+  Append(&buff, L"Len: ");
+  Append(&buff, buffer.textLen);
+  Append(&buff, L" Capacity: ");
+  Append(&buff, buffer.textCapacity);
+  Append(&buff, L" Build: ");
   Append(&buff, buildTime);
   Append(&buff, L"ms");
   Append(&buff, L" Fmt: ");

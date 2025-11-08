@@ -86,6 +86,7 @@ struct v4 {
 };
 
 struct AppState {
+  HWND window;
   bool isRunning;
   f32 appTimeMs;
   f32 lastFrameTimeMs;
@@ -441,4 +442,61 @@ void RunCommand(char* cmd, char* output, u32* len) {
   CloseHandle(pi.hProcess);
   CloseHandle(pi.hThread);
   CloseHandle(hRead);
+}
+
+i32 strlen(char* str) {
+  i32 res = 0;
+  while (str[res])
+    res++;
+  return res;
+}
+
+#pragma function(memcpy)
+extern "C" void* memcpy(void* dst, const void* src, size_t n) {
+  unsigned char* d = (unsigned char*)dst;
+  const unsigned char* s = (const unsigned char*)src;
+  while (n--)
+    *d++ = *s++;
+  return dst;
+}
+
+char* ClipboardPaste(HWND window, i32* size) {
+  OpenClipboard(window);
+  HANDLE hClipboardData = GetClipboardData(CF_TEXT);
+  char* pchData = (char*)GlobalLock(hClipboardData);
+  char* res = NULL;
+  if (pchData) {
+    i32 len = strlen(pchData);
+    res = (char*)valloc(len);
+    memcpy(res, pchData, len);
+    GlobalUnlock(hClipboardData);
+    *size = len;
+  } else {
+    OutputDebugStringA("Failed to capture clipboard\n");
+  }
+  CloseClipboard();
+  return res;
+}
+
+// https://www.codeproject.com/Articles/2242/Using-the-Clipboard-Part-I-Transferring-Simple-Tex
+void ClipboardCopy(HWND window, wchar_t* text, i32 len) {
+  if (OpenClipboard(window)) {
+    EmptyClipboard();
+
+    HGLOBAL hClipboardData = GlobalAlloc(GMEM_DDESHARE, len + 1);
+
+    char* pchData = (char*)GlobalLock(hClipboardData);
+
+    for (i32 i = 0; i < len; i++) {
+      pchData[i] = (u8)text[i];
+    }
+    // memcpy(pchData, text, len);
+    pchData[len] = '\0';
+
+    GlobalUnlock(hClipboardData);
+
+    SetClipboardData(CF_TEXT, hClipboardData);
+
+    CloseClipboard();
+  }
 }

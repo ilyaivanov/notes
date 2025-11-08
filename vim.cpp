@@ -17,6 +17,7 @@ i32 clamp(i32 v, i32 min, i32 max) {
     return max;
   return v;
 }
+
 struct LineBreak {
   // Soft line break is a text overflow break due to a limited screen width.
   // Non-soft (hard) line break is via \n
@@ -33,6 +34,7 @@ struct Buffer {
   i32 linesLen;
   i32 linesCapacity;
 
+  i32 selectionStart;
   i32 cursor;
   i32 desiredOffset;
 };
@@ -43,6 +45,16 @@ void InsertCharAt(Buffer& b, i32 at, c16 ch) {
   }
   b.text[at] = ch;
   b.textLen++;
+}
+
+void InsertCharsAt(Buffer& b, i32 at, c16* text, i32 textLen) {
+  for (i32 i = b.textLen; i > at; i--) {
+    b.text[i + textLen - 1] = b.text[i - 1];
+  }
+  for (i32 i = 0; i < textLen; i++) {
+    b.text[at + i] = (u8)text[i];
+  }
+  b.textLen += textLen;
 }
 
 // one two
@@ -60,11 +72,11 @@ void RemoveChars(Buffer& b, i32 from, i32 to) {
   b.textLen -= to - from + 1;
 }
 
-i32 FindLineStart(Buffer& b, i32* lineIndex = 0) {
+i32 FindLineStartFrom(Buffer& b, i32 at, i32* lineIndex = 0) {
   for (i32 i = 0; i < b.linesLen - 1; i++) {
     i32 start = b.lines[i].textPos;
     i32 end = b.lines[i + 1].textPos;
-    if (b.cursor >= start && b.cursor < end) {
+    if (at >= start && at < end) {
       if (lineIndex)
         *lineIndex = i;
       return start;
@@ -73,17 +85,25 @@ i32 FindLineStart(Buffer& b, i32* lineIndex = 0) {
   return 0;
 }
 
-i32 FindLineEnd(Buffer& b, i32* lineIndex = 0) {
+i32 FindLineStart(Buffer& b, i32* lineIndex = 0) {
+  return FindLineStartFrom(b, b.cursor, lineIndex);
+}
+
+i32 FindLineEndFrom(Buffer& b, i32 at, i32* lineIndex = 0) {
   for (i32 i = 0; i < b.linesLen - 1; i++) {
     i32 start = b.lines[i].textPos;
     i32 end = b.lines[i + 1].textPos;
-    if (b.cursor >= start && b.cursor < end) {
+    if (at >= start && at < end) {
       if (lineIndex)
         *lineIndex = i + 1;
       return end;
     }
   }
-  return -1;
+  return b.textLen;
+}
+
+i32 FindLineEnd(Buffer& b, i32* lineIndex = 0) {
+  return FindLineEndFrom(b, b.cursor, lineIndex);
 }
 
 void UpdateDesiredOffset(Buffer& b) {
@@ -145,6 +165,12 @@ void MoveUp(Buffer& b) {
 
 i32 Max(i32 a, i32 b) {
   if (a > b)
+    return a;
+  return b;
+}
+
+i32 Min(i32 a, i32 b) {
+  if (a < b)
     return a;
   return b;
 }
