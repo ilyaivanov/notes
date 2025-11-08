@@ -86,6 +86,7 @@ struct v4 {
 };
 
 struct AppState {
+  HDC dc;
   HWND window;
   bool isRunning;
   f32 appTimeMs;
@@ -154,8 +155,8 @@ HWND OpenWindow(WindowProc* proc) {
   int screenWidth = GetDeviceCaps(screenDc, HORZRES);
   //  int screenHeight = GetDeviceCaps(screenDc, VERTRES);
 
-  int width = 800;
-  int height = 800;
+  int width = 1200;
+  int height = 1600;
 
   HWND win = CreateWindowW(windowClass.lpszClassName, L"Notes", WS_OVERLAPPEDWINDOW,
                            screenWidth - width - 1200, 0, width, height, 0, 0, instance, 0);

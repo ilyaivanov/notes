@@ -3,3 +3,6 @@ build
 *.pdb
 *.obj
 tags
+*.lib
+*.dll
+*.exp

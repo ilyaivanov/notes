@@ -7,6 +7,7 @@
 #include "utils.cpp"
 
 const wchar_t* path = L"main.cpp";
+const wchar_t* libPath = L"lib.dll";
 
 enum Mode { Normal, Insert, VisualLine };
 
@@ -119,6 +120,11 @@ void OnResize(AppState& app) {
   // textArea = ShrinkRect(textArea, pagePadding);
   RebuildLines();
 }
+
+HMODULE libModule;
+
+typedef void RenderApp(MyBitmap* bitmap, AppState* app);
+RenderApp* render;
 
 void Init(AppState& app) {
   InitAnimations();
@@ -311,6 +317,33 @@ void HandleMotions(AppState& app) {
   }
 }
 
+void Rebuild() {
+  if (libModule) {
+    FreeLibrary(libModule);
+    libModule = NULL;
+  }
+  // need to wait untill dll is released, otherwise compiler complains it can't remove dll file
+  Sleep(40);
+
+  char* buildOut = (char*)valloc(2000);
+  u32 buildOutLen = 0;
+  char* cmd = (char*)"clang-cl /GR- /FC /GS- /LDd /Felib.dll main.cpp /link /nodefaultlib "
+                     "-EXPORT:RenderApp "
+                     "user32.lib kernel32.lib gdi32.lib winmm.lib shell32.lib dwmapi.lib uuid.lib "
+                     "ole32.lib";
+
+  RunCommand(cmd, buildOut, &buildOutLen);
+
+  // RunCommand((char*)"cl main.cpp /link /nodefaultlib /subsystem:console kernel32.lib",
+  // buildOut, &buildOutLen);
+
+  libModule = LoadLibrary(libPath);
+
+  if (libModule) {
+    render = (RenderApp*)(void*)GetProcAddress(libModule, "RenderApp");
+  }
+}
+
 void OnKeyPress(u32 code, AppState& app) {
   if (mode == VisualLine) {
 
@@ -406,16 +439,8 @@ void OnKeyPress(u32 code, AppState& app) {
       SaveFile();
 
       i64 start = GetPerfCounter();
-      char* buildOut = (char*)valloc(2000);
-      u32 buildOutLen = 0;
-      RunCommand((char*)"clang main.cpp -Xlinker /NODEFAULTLIB -Xlinker /entry:mainCRTStartup "
-                        "-Xlinker /subsystem:console -o main.exe -lkernel32 ",
-                 buildOut, &buildOutLen);
-
-      // RunCommand((char*)"cl main.cpp /link /nodefaultlib /subsystem:console kernel32.lib",
-      // buildOut, &buildOutLen);
-
-      RunCommand((char*)"./main.exe", out, &len);
+      Rebuild();
+      // RunCommand((char*)"./main.exe", out, &len);
       buildTime = (i64)round((GetPerfCounter() - start) / (f32)GetPerfFrequency() * 1000.0f);
     }
 
@@ -714,7 +739,9 @@ void Draw(AppState& app) {
   PaintRect(cursorRect, cursorColor);
 
   CharBuffer buff = {};
-  Append(&buff, L"Desired: ");
+  Append(&buff, L"FPS: ");
+  Append(&buff, i32(1000.0f / app.lastFrameTimeMs));
+  Append(&buff, L" Desired: ");
   Append(&buff, buffer.desiredOffset);
   Append(&buff, L" Len: ");
   Append(&buff, buffer.textLen);
@@ -747,6 +774,11 @@ void Draw(AppState& app) {
 
   SetAlign(TA_RIGHT);
   PrintText(app.size.x - 10, app.size.y - fontHeight * 2 - 8, currentCommand, currentCommandLen);
+
+  if (render) {
+    SetColors(white, black);
+    render(currentBitmap, &app);
+  }
 
   UpdateSpring(&scrollOffset, app.lastFrameTimeMs / 1000.0f);
 }

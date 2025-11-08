@@ -78,6 +78,7 @@ extern "C" void WinMainCRTStartup() {
 
   windowDc = GetDC(win);
   drawingDc = CreateCompatibleDC(0);
+  appState.dc = drawingDc;
 
   i64 freq = GetPerfFrequency();
   i64 appStart = GetPerfCounter();
