@@ -8,7 +8,7 @@
 
 const wchar_t* path = L"main.cpp";
 
-enum Mode { Normal, Insert, VisualLine, Visual };
+enum Mode { Normal, Insert, VisualLine };
 
 Mode mode = Normal;
 i32 fontSize = 14;
@@ -24,6 +24,7 @@ v3 bg = {0.2, 0.4, 0.2};
 v3 white = {1, 1, 1};
 v3 red = {1, 0, 0};
 v3 grey = {0.4, 0.4, 0.4};
+v3 lightGrey = {0.5, 0.5, 0.5};
 v3 black = {0, 0, 0};
 Spring scrollOffset;
 
@@ -296,6 +297,18 @@ void HandleMotions(AppState& app) {
     UpdateDesiredOffset(buffer);
     OnCursorUpdated(app);
   }
+
+  if (IsCommand(L"l")) {
+    MoveRight(buffer);
+    UpdateDesiredOffset(buffer);
+    OnCursorUpdated(app);
+  }
+
+  if (IsCommand(L"h")) {
+    MoveLeft(buffer);
+    UpdateDesiredOffset(buffer);
+    OnCursorUpdated(app);
+  }
 }
 
 void OnKeyPress(u32 code, AppState& app) {
@@ -326,9 +339,8 @@ void OnKeyPress(u32 code, AppState& app) {
       i32 selEnd = Max(buffer.cursor, buffer.selectionStart);
       i32 selStartLine = FindLineStartFrom(buffer, selStart);
       i32 selEndLine = FindLineEndFrom(buffer, selEnd);
-      RemoveChars(buffer, selStartLine, selEndLine - 1);
-      buffer.cursor = selStartLine - 1;
-      buffer.cursor = selStartLine - 1;
+      RemoveChars(buffer, selStartLine, selEndLine - 2);
+      buffer.cursor = selStartLine;
       mode = Insert;
       RebuildLines();
     }
@@ -341,24 +353,6 @@ void OnKeyPress(u32 code, AppState& app) {
       ClipboardCopy(app.window, buffer.text + selStartLine, selEndLine - selStartLine);
       mode = Normal;
     }
-
-    if (!isPartialMatch) {
-      currentCommandLen = 0;
-    }
-
-    if (code == VK_ESCAPE) {
-      currentCommandLen = 0;
-    }
-  } else if (mode == Visual) {
-
-    isPartialMatch = false;
-    currentCommand[currentCommandLen++] = code;
-
-    if (code == VK_ESCAPE) {
-      mode = Normal;
-    }
-
-    HandleMotions(app);
 
     if (!isPartialMatch) {
       currentCommandLen = 0;
@@ -383,11 +377,6 @@ void OnKeyPress(u32 code, AppState& app) {
 
     if (IsCommand(L"V")) {
       mode = VisualLine;
-      buffer.selectionStart = buffer.cursor;
-    }
-
-    if (IsCommand(L"v")) {
-      mode = Visual;
       buffer.selectionStart = buffer.cursor;
     }
 
@@ -665,7 +654,14 @@ void Draw(AppState& app) {
       line++;
     }
 
-    SetColors(white, black);
+    i32 lineStart = start;
+    while (buffer.text[lineStart] == ' ')
+      lineStart++;
+    if (buffer.text[lineStart] == L'/' && buffer.text[lineStart + 1] == L'/')
+      SetColors(lightGrey, black);
+    else
+      SetColors(white, black);
+
     SetAlign(TA_LEFT);
 
     if (mode == VisualLine) {
@@ -730,12 +726,10 @@ void Draw(AppState& app) {
   Append(&buff, L" Fmt: ");
   Append(&buff, formatTime);
   Append(&buff, L"ms");
+
+  SetColors(white, black);
   SetAlign(TA_RIGHT);
   PrintText(app.size.x - 10, app.size.y - fontHeight - 8, buff.content, buff.len);
-
-  // Append(&buff, GetTextWidth(buffer.text, FindLineStart(buffer), buffer.cursor));
-  // Append(&buff, L" Desired: ");
-  //
 
   if (len > 0) {
     SetAlign(TA_RIGHT);

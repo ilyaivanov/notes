@@ -497,7 +497,6 @@ void ClipboardCopy(HWND window, wchar_t* text, i32 len) {
     for (i32 i = 0; i < len; i++) {
       pchData[i] = (u8)text[i];
     }
-    // memcpy(pchData, text, len);
     pchData[len] = '\0';
 
     GlobalUnlock(hClipboardData);
