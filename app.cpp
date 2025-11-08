@@ -252,7 +252,7 @@ void FormatCode() {
   SaveFile();
 }
 
-bool HasNewLine(c16* text) {
+bool HasNewLine(c8* text) {
   int i = 0;
   while (text[i]) {
     if (text[i] == '\n')
@@ -263,7 +263,6 @@ bool HasNewLine(c16* text) {
 }
 
 void HandleMotions(AppState& app) {
-
   if (IsCommand(L"j")) {
     MoveDown(buffer);
     OnCursorUpdated(app);
@@ -273,7 +272,32 @@ void HandleMotions(AppState& app) {
     MoveUp(buffer);
     OnCursorUpdated(app);
   }
+
+  if (IsCommand(L"w")) {
+    buffer.cursor = JumpWordForward(buffer);
+    OnCursorUpdated(app);
+    UpdateDesiredOffset(buffer);
+  }
+
+  if (IsCommand(L"b")) {
+    buffer.cursor = JumpWordBackward(buffer);
+    UpdateDesiredOffset(buffer);
+    OnCursorUpdated(app);
+  }
+
+  if (IsCommand(L"W")) {
+    buffer.cursor = JumpWordForwardIgnorePunctuation(buffer);
+    OnCursorUpdated(app);
+    UpdateDesiredOffset(buffer);
+  }
+
+  if (IsCommand(L"B")) {
+    buffer.cursor = JumpWordBackwardIgnorePunctuation(buffer);
+    UpdateDesiredOffset(buffer);
+    OnCursorUpdated(app);
+  }
 }
+
 void OnKeyPress(u32 code, AppState& app) {
   if (mode == VisualLine) {
 
@@ -372,12 +396,13 @@ void OnKeyPress(u32 code, AppState& app) {
     }
 
     if (IsCommand(L"p")) {
-      c16* text = (c16*)L"word ";
-      i32 len = 5;
-      // c16* text = (c16*)L"hello there\n";
+      i32 len;
+      c8* text = ClipboardPaste(app.window, &len);
+
       i32 at = buffer.cursor;
       i32 cursorPos = at + len;
       bool hasNewLine = HasNewLine(text);
+
       if (hasNewLine) {
         at = FindLineEndFrom(buffer, at);
         cursorPos = at;
@@ -386,7 +411,6 @@ void OnKeyPress(u32 code, AppState& app) {
       InsertCharsAt(buffer, at, text, len);
       buffer.cursor = cursorPos;
       RebuildLines();
-      // buffer.cursor = FindLineOffsetByDistance(buffer, 0, buffer.desiredOffset);
     }
 
     if (IsCommand(L"r")) {
@@ -446,42 +470,40 @@ void OnKeyPress(u32 code, AppState& app) {
     }
 
     if (IsCommand(L"ci\"") || IsCommand(L"cis")) {
-      i32 lineStart = FindLineStart(buffer);
-      i32 quoteLeft = -1;
-      i32 quoteRight = -1;
-      for (i32 i = buffer.cursor; i >= lineStart; i--) {
-
-        if (buffer.text[i] == L'"') {
-          quoteLeft = i;
-          break;
-        }
+      Range stringRange = GetStringLocation(buffer, buffer.cursor);
+      if (stringRange.from != -1) {
+        RemoveChars(buffer, stringRange.from + 1, stringRange.to - 1);
+        buffer.cursor = ClampCursor(buffer, stringRange.from + 1);
+        OnCursorUpdated(app);
+        RebuildLines();
+        mode = Insert;
+        UpdateDesiredOffset(buffer);
       }
-      for (i32 i = buffer.cursor; i < buffer.textLen; i++) {
-        if (buffer.text[i] == L'"') {
-          quoteRight = i;
-          break;
-        }
+    }
+
+    if (IsCommand(L"ca\"") || IsCommand(L"cas")) {
+      Range stringRange = GetStringLocation(buffer, buffer.cursor);
+      if (stringRange.from != -1) {
+        RemoveChars(buffer, stringRange.from, stringRange.to);
+        buffer.cursor = ClampCursor(buffer, stringRange.from);
+        OnCursorUpdated(app);
+        RebuildLines();
+        mode = Insert;
+        UpdateDesiredOffset(buffer);
       }
+    }
 
-      if (quoteRight != -1) {
-        if (quoteLeft == -1) {
-          quoteLeft = quoteRight;
+    if (IsCommand(L"}")) {
+      i32 next = FindNext(buffer, buffer.cursor + 1, (c16*)L"\n\n");
+      if (next != -1) {
+        buffer.cursor = next + 1;
+      }
+    }
 
-          for (i32 i = quoteLeft + 1; i < buffer.textLen; i++) {
-            if (buffer.text[i] == L'"') {
-              quoteRight = i;
-              break;
-            }
-          }
-        }
-
-        if (quoteRight != -1) {
-          RemoveChars(buffer, quoteLeft + 1, quoteRight - 1);
-          buffer.cursor = ClampCursor(buffer, quoteLeft + 1);
-          OnCursorUpdated(app);
-          RebuildLines();
-          mode = Insert;
-        }
+    if (IsCommand(L"{")) {
+      i32 prev = FindPrev(buffer, buffer.cursor - 1, (c16*)L"\n\n");
+      if (prev != -1) {
+        buffer.cursor = prev - 1;
       }
     }
 
@@ -492,6 +514,7 @@ void OnKeyPress(u32 code, AppState& app) {
       buffer.cursor = ClampCursor(buffer, lineStart);
       OnCursorUpdated(app);
       RebuildLines();
+      UpdateDesiredOffset(buffer);
 
       mode = Insert;
     }
@@ -695,7 +718,9 @@ void Draw(AppState& app) {
   PaintRect(cursorRect, cursorColor);
 
   CharBuffer buff = {};
-  Append(&buff, L"Len: ");
+  Append(&buff, L"Desired: ");
+  Append(&buff, buffer.desiredOffset);
+  Append(&buff, L" Len: ");
   Append(&buff, buffer.textLen);
   Append(&buff, L" Capacity: ");
   Append(&buff, buffer.textCapacity);

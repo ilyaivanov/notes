@@ -451,6 +451,13 @@ i32 strlen(char* str) {
   return res;
 }
 
+i32 wstrlen(c16* str) {
+  i32 res = 0;
+  while (str[res] != L'\0')
+    res++;
+  return res;
+}
+
 #pragma function(memcpy)
 extern "C" void* memcpy(void* dst, const void* src, size_t n) {
   unsigned char* d = (unsigned char*)dst;

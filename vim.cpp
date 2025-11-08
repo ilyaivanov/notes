@@ -39,6 +39,11 @@ struct Buffer {
   i32 desiredOffset;
 };
 
+struct Range {
+  i32 from;
+  i32 to;
+};
+
 void InsertCharAt(Buffer& b, i32 at, c16 ch) {
   for (i32 i = b.textLen; i > at; i--) {
     b.text[i] = b.text[i - 1];
@@ -47,12 +52,12 @@ void InsertCharAt(Buffer& b, i32 at, c16 ch) {
   b.textLen++;
 }
 
-void InsertCharsAt(Buffer& b, i32 at, c16* text, i32 textLen) {
+void InsertCharsAt(Buffer& b, i32 at, c8* text, i32 textLen) {
   for (i32 i = b.textLen; i > at; i--) {
     b.text[i + textLen - 1] = b.text[i - 1];
   }
   for (i32 i = 0; i < textLen; i++) {
-    b.text[at + i] = (u8)text[i];
+    b.text[at + i] = (c16)text[i];
   }
   b.textLen += textLen;
 }
@@ -276,4 +281,79 @@ i32 JumpWordForward(Buffer& buffer) {
   }
 
   return pos;
+}
+
+Range GetStringLocation(Buffer& buffer, i32 at) {
+  Range res = {-1, -1};
+  i32 lineStart = FindLineStart(buffer);
+  i32 quoteLeft = -1;
+  i32 quoteRight = -1;
+
+  for (i32 i = at; i >= lineStart; i--) {
+    if (buffer.text[i] == L'"') {
+      quoteLeft = i;
+      break;
+    }
+  }
+
+  for (i32 i = at; i < buffer.textLen; i++) {
+    if (buffer.text[i] == L'"') {
+      quoteRight = i;
+      break;
+    }
+  }
+
+  if (quoteRight != -1) {
+    if (quoteLeft == -1) {
+      quoteLeft = quoteRight;
+
+      for (i32 i = quoteLeft + 1; i < buffer.textLen; i++) {
+        if (buffer.text[i] == L'"') {
+          quoteRight = i;
+          break;
+        }
+      }
+    }
+
+    if (quoteRight != -1) {
+      res.from = quoteLeft;
+      res.to = quoteRight;
+      return res;
+    }
+  }
+
+  return res;
+}
+
+i32 FindNext(Buffer& b, i32 from, c16* text) {
+  i32 inText = 0;
+  for (i32 i = from; i < b.textLen; i++) {
+    if (b.text[i] == text[inText]) {
+      inText++;
+      if (text[inText] == L'\0') {
+        return i - inText + 1;
+      }
+    } else {
+      inText = 0;
+    }
+  }
+  return -1;
+}
+
+i32 FindPrev(Buffer& b, i32 from, c16* text) {
+  i32 strLen = wstrlen(text) - 1;
+  i32 inText = strLen;
+
+  for (i32 i = from; i >= 0; i--) {
+    if (b.text[i] == text[inText]) {
+      inText--;
+      if (inText < 0) {
+        return i + strLen + 1;
+      }
+    } else {
+      inText = strLen;
+    }
+  }
+
+  return -1;
 }
