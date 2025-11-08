@@ -52,12 +52,12 @@ void InsertCharAt(Buffer& b, i32 at, c16 ch) {
   b.textLen++;
 }
 
-void InsertCharsAt(Buffer& b, i32 at, c8* text, i32 textLen) {
+void InsertCharsAt(Buffer& b, i32 at, c16* text, i32 textLen) {
   for (i32 i = b.textLen; i > at; i--) {
     b.text[i + textLen - 1] = b.text[i - 1];
   }
   for (i32 i = 0; i < textLen; i++) {
-    b.text[at + i] = (c16)text[i];
+    b.text[at + i] = text[i];
   }
   b.textLen += textLen;
 }

@@ -468,15 +468,15 @@ extern "C" void* memcpy(void* dst, const void* src, size_t n) {
   return dst;
 }
 
-char* ClipboardPaste(HWND window, i32* size) {
+c16* ClipboardPaste(HWND window, i32* size) {
   OpenClipboard(window);
-  HANDLE hClipboardData = GetClipboardData(CF_TEXT);
-  char* pchData = (char*)GlobalLock(hClipboardData);
-  char* res = NULL;
+  HANDLE hClipboardData = GetClipboardData(CF_UNICODETEXT);
+  c16* pchData = (c16*)GlobalLock(hClipboardData);
+  c16* res = NULL;
   if (pchData) {
-    i32 len = strlen(pchData);
-    res = (char*)valloc(len);
-    memcpy(res, pchData, len);
+    i32 len = wstrlen(pchData);
+    res = (c16*)valloc(len * sizeof(c16));
+    memcpy(res, pchData, len * sizeof(c16));
     GlobalUnlock(hClipboardData);
     *size = len;
   } else {

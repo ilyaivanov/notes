@@ -259,10 +259,10 @@ void FormatCode() {
   SaveFile();
 }
 
-bool HasNewLine(c8* text) {
+bool HasNewLine(c16* text) {
   int i = 0;
   while (text[i]) {
-    if (text[i] == '\n')
+    if (text[i] == L'\n')
       return true;
     i++;
   }
@@ -419,7 +419,7 @@ void OnKeyPress(u32 code, AppState& app) {
 
     if (IsCommand(L"p")) {
       i32 len;
-      c8* text = ClipboardPaste(app.window, &len);
+      c16* text = ClipboardPaste(app.window, &len);
 
       i32 at = buffer.cursor;
       i32 cursorPos = at + len;
@@ -431,6 +431,7 @@ void OnKeyPress(u32 code, AppState& app) {
       }
 
       InsertCharsAt(buffer, at, text, len);
+      vfree(text);
       buffer.cursor = cursorPos;
       RebuildLines();
     }
