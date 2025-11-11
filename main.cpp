@@ -1,20 +1,47 @@
 
-@echo off
+void PaintWindow() {
+  StretchDIBits(windowDc, 0, 0, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height,
+                canvas.pixels, &bitmapInfo, DIB_RGB_COLORS, SRCCOPY);
+}
 
-    set libs = -lkernel32 - luser32 - lgdi32.lib - ldwmapi.lib - lwinmm.lib set linker =
-                   -Xlinker / NODEFAULTLIB - Xlinker / entry : WinMainCRTStartup -
-                   Xlinker / subsystem : windows REM set linker = -Xlinker / subsystem
-    : windows
+struct LineBreak {
+  // Soft line break is a text overflow break due to a limited screen width.
+  // Non-soft (hard) line break is via \n
+  i8 isSoft;
+  i32 textPos;
+};
 
-          set common = -Wall - Wextra
+struct Buffer {
+  c16* text;
+  i32 textLen;
+  i32 textCapacity;
 
-                                   rem set conf = -O3 set conf =
-                           -g
+  LineBreak* lines;
+  i32 linesLen;
+  i32 linesCapacity;
 
-                           if not exist build mkdir build
+  i32 selectionStart;
+  i32 cursor;
+  i32 desiredOffset;
+};
 
-                               clang %
-                           common % entry.cpp % linker % % conf % -o build\main.exe % libs %
+Buffer buffer;
+void LoadFile(c16* path) {
+  i64 size = GetMyFileSize(path);
+  c8* file = (c8*)valloc(size);
+  ReadFileInto(path, size, file);
+  i32 wideCharsCount = MultiByteToWideChar(CP_UTF8, MB_PRECOMPOSED, file, size, 0, 0);
+  c16* text = (c16*)valloc(wideCharsCount * sizeof(c16));
+  MultiByteToWideChar(CP_UTF8, MB_PRECOMPOSED, file, size, text, wideCharsCount);
 
-                           if % ERRORLEVEL %
-                           EQU 0(call build\main.exe) else(echo Compilation failed.)
+  i32 bufferPos = 0;
+  for (i32 i = 0; i < wideCharsCount; i++) {
+    if (text[i] != '\r') {
+      buffer.text[bufferPos] = text[i];
+      bufferPos++;
+    }
+  }
+  buffer.textLen = bufferPos;
+
+  // RebuildLines();
+}

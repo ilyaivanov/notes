@@ -2,7 +2,6 @@
 
 #include <math.h>
 #include <dwmapi.h>
-#include <processthreadsapi.h>
 #include <stdint.h>
 #include <windows.h>
 #include <windowsx.h>
@@ -34,6 +33,21 @@ struct v2 {
 v2 vec2(f32 x, f32 y) {
   v2 res = {x, y};
   return res;
+}
+
+v2 operator-(const v2& a, const v2& b) {
+  v2 res = {a.x - b.x, a.y - b.y};
+  return res;
+}
+
+v2 operator+(const v2& a, const v2& b) {
+  v2 res = {a.x + b.x, a.y + b.y};
+  return res;
+}
+
+v2& operator+=(v2& a, const v2& b) {
+  a = a + b;
+  return a;
 }
 
 struct vi2 {

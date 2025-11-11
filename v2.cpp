@@ -1,0 +1,453 @@
+#define UNICODE
+#define WIN32_LEAN_AND_MEAN
+
+#define FULLSCREEN
+
+#include "win32.cpp"
+#include "anim.cpp"
+#include "vim.cpp"
+
+HWND win;
+AppState appState;
+HFONT font;
+i32 fontSize;
+#define initialFontSize 15
+
+HDC windowDc;
+HDC drawingDc;
+
+v3 fontColor = {0.85, 0.85, 0.85};
+v3 white = {1, 1, 1};
+v3 grey = {0.05, 0.05, 0.05};
+v3 bg = {0.05, 0.05, 0.05};
+v3 red = {1, 0.2, 0.2};
+v3 line = {0.1, 0.1, 0.1};
+v3 lineNumberColor = {0.3, 0.3, 0.3};
+v3 lineColor = {0.1, 0.1, 0.1};
+v3 cursorColor = {1, 220.0f / 255.0f, 50.0f / 255.0f};
+v3 cursorTextColor = {0.05, 0.05, 0.05};
+
+HBITMAP bitmap;
+BITMAPINFO bitmapInfo;
+MyBitmap canvas;
+
+void PaintWindow() {
+  StretchDIBits(windowDc, 0, 0, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height,
+                canvas.pixels, &bitmapInfo, DIB_RGB_COLORS, SRCCOPY);
+}
+
+Buffer leftBuffer;
+Buffer rightBuffer;
+Buffer middleBuffer;
+
+Buffer* selectedBuffer;
+
+void SelectLeftBuffer() {
+  if (selectedBuffer == &rightBuffer)
+    selectedBuffer = &middleBuffer;
+  else
+    selectedBuffer = &leftBuffer;
+}
+
+void SelectRightBuffer() {
+  if (selectedBuffer == &leftBuffer)
+    selectedBuffer = &middleBuffer;
+  else
+    selectedBuffer = &rightBuffer;
+}
+
+// TODO: fix this shity code, I need this in order to comminicate with vim.cpp, which currently
+// accepts references
+Buffer& GetSelectedBuffer() {
+  if (selectedBuffer == &leftBuffer)
+    return leftBuffer;
+  else if (selectedBuffer == &middleBuffer)
+    return middleBuffer;
+  else
+    return rightBuffer;
+}
+
+void LoadFile(c16* path, Buffer& buffer) {
+  memcpy(buffer.path, path, wstrlen(path) * sizeof(c16));
+
+  i64 size = GetMyFileSize(path);
+  c8* file = (c8*)valloc(size);
+  ReadFileInto(path, size, file);
+  i32 wideCharsCount = MultiByteToWideChar(CP_UTF8, MB_PRECOMPOSED, file, size, 0, 0);
+  c16* text = (c16*)valloc(wideCharsCount * sizeof(c16));
+  MultiByteToWideChar(CP_UTF8, MB_PRECOMPOSED, file, size, text, wideCharsCount);
+
+  i32 bufferPos = 0;
+  for (i32 i = 0; i < wideCharsCount; i++) {
+    if (text[i] != '\r') {
+      buffer.text[bufferPos] = text[i];
+      bufferPos++;
+    }
+  }
+  buffer.textLen = bufferPos;
+
+  vfree(file);
+  vfree(text);
+  // RebuildLines();
+}
+
+void InitBuffer(const c16* path, Buffer& buffer) {
+  buffer.textCapacity = MB(2) / sizeof(c16);
+  buffer.text = (c16*)valloc(buffer.textCapacity * sizeof(c16));
+  LoadFile((c16*)path, buffer);
+}
+
+HFONT CreateAppFont(HDC dc, const wchar_t* name, i32 weight, i32 fontSize, DWORD quality) {
+  int h = -MulDiv(fontSize, GetDeviceCaps(dc, LOGPIXELSY), USER_DEFAULT_SCREEN_DPI);
+  HFONT font = CreateFontW(h, 0, 0, 0,
+                           weight, // Weight
+                           0,      // Italic
+                           0,      // Underline
+                           0,      // Strikeout
+                           DEFAULT_CHARSET, OUT_TT_ONLY_PRECIS, CLIP_DEFAULT_PRECIS,
+
+                           // I've experimented with the Chrome and it doesn't render LCD
+                           // quality for fonts above 32px
+                           // ANTIALIASED_QUALITY,
+                           // I'm experiencing troubles with LCD font rendering and
+                           // setting a custom color for a shader
+                           quality,
+
+                           DEFAULT_PITCH, name);
+  return font;
+}
+
+void ResizeFont(i32 newSize) {
+  fontSize = newSize;
+  if (font)
+    DeleteFont(font);
+
+  font = CreateAppFont(appState.dc, L"Consolas", FW_NORMAL, fontSize, ANTIALIASED_QUALITY);
+}
+
+void Init() {
+  ResizeFont(initialFontSize);
+  InitBuffer(L"main.cpp", leftBuffer);
+  InitBuffer(L"v2.cpp", middleBuffer);
+  InitBuffer(L"notes.txt", rightBuffer);
+  selectedBuffer = &middleBuffer;
+}
+
+f32 GetFontHeight() {
+  TEXTMETRIC textMetric;
+  GetTextMetrics(appState.dc, &textMetric);
+  return textMetric.tmAscent + textMetric.tmDescent;
+}
+
+LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
+  switch (message) {
+  case WM_CHAR:
+    if (wParam == L'.')
+      ResizeFont(fontSize + 1);
+    if (wParam == L',')
+      ResizeFont(fontSize - 1);
+    break;
+  case WM_KEYDOWN:
+    if (wParam == 'Q') {
+      PostQuitMessage(0);
+      appState.isRunning = false;
+    }
+    if (wParam == 'F') {
+      appState.isFullscreen = !appState.isFullscreen;
+      SetFullscreen(appState.window, appState.isFullscreen);
+    }
+    if (wParam == L'H' && IsKeyPressed(VK_CONTROL))
+      SelectLeftBuffer();
+    else if (wParam == L'L' && IsKeyPressed(VK_CONTROL))
+      SelectRightBuffer();
+    else if (wParam == L'J' && IsKeyPressed(VK_CONTROL))
+      selectedBuffer->offset.target += GetFontHeight() * 3;
+    else if (wParam == L'K' && IsKeyPressed(VK_CONTROL))
+      selectedBuffer->offset.target -= GetFontHeight() * 3;
+    else if (wParam == L'D' && IsKeyPressed(VK_CONTROL))
+      selectedBuffer->offset.target += appState.size.y / 2;
+    else if (wParam == L'U' && IsKeyPressed(VK_CONTROL))
+      selectedBuffer->offset.target -= appState.size.y / 2;
+    else if (wParam == L'J') {
+      MoveDown(GetSelectedBuffer(), appState.dc);
+    } else if (wParam == L'K') {
+      MoveUp(GetSelectedBuffer(), appState.dc);
+    } else if (wParam == L'H') {
+      MoveLeft(GetSelectedBuffer());
+      UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+    } else if (wParam == L'L') {
+      MoveRight(GetSelectedBuffer());
+      UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+    }
+
+    break;
+  case WM_DESTROY:
+    PostQuitMessage(0);
+    appState.isRunning = false;
+    break;
+  case WM_PAINT: {
+    PAINTSTRUCT ps;
+    BeginPaint(handle, &ps);
+    EndPaint(handle, &ps);
+  } break;
+  case WM_SIZE: {
+
+    canvas.width = LOWORD(lParam);
+    canvas.height = HIWORD(lParam);
+    appState.size.x = canvas.width;
+    appState.size.y = canvas.height;
+
+    bitmapInfo.bmiHeader.biSize = sizeof(bitmapInfo.bmiHeader);
+    bitmapInfo.bmiHeader.biBitCount = 32;
+    bitmapInfo.bmiHeader.biWidth = canvas.width;
+    // makes rows go down, instead of going up by default
+    bitmapInfo.bmiHeader.biHeight = -canvas.height;
+    bitmapInfo.bmiHeader.biPlanes = 1;
+    bitmapInfo.bmiHeader.biCompression = BI_RGB;
+
+    if (bitmap)
+      DeleteBitmap(bitmap);
+
+    void* bits;
+    bitmap = CreateDIBSection(drawingDc, &bitmapInfo, DIB_RGB_COLORS, &bits, 0, 0);
+    canvas.pixels = (u32*)bits;
+
+    // if (appState.isRunning) {
+    //   OnResize(appState);
+    //
+    //   SelectBitmap(drawingDc, bitmap);
+    //   Draw(appState);
+    //   PaintWindow();
+    // }
+  }
+  }
+  return DefWindowProc(handle, message, wParam, lParam);
+}
+
+void SetColors(v3 fg, v3 bg) {
+  fg *= 255.0f;
+  bg *= 255.0f;
+  SetBkColor(appState.dc, RGB(bg.x, bg.y, bg.z));
+  SetTextColor(appState.dc, RGB(fg.x, fg.y, fg.z));
+}
+
+u32 ColorFromVec(v3 color) {
+  u32 r = (u32)(color.x * 255.0);
+  u32 g = (u32)(color.y * 255.0);
+  u32 b = (u32)(color.z * 255.0);
+
+  return r << 16 | g << 8 | b << 0;
+}
+
+void PaintRect(i32 x, i32 y, i32 width, i32 height, v3 color) {
+  u32 c = ColorFromVec(color);
+  for (i32 i = x; i < x + width; i++) {
+    for (i32 j = y; j < y + height; j++) {
+      if (i >= 0 && i < (i32)canvas.width && j < (i32)canvas.height && j >= 0)
+        canvas.pixels[j * canvas.width + i] = c;
+    }
+  }
+}
+
+struct Rect {
+  f32 x;
+  f32 y;
+  f32 width;
+  f32 height;
+};
+
+struct CursorPos {
+  i32 lineStart;
+  i32 row;
+  i32 col;
+};
+
+CursorPos GetCursorPos(Buffer& buffer) {
+  i32 lineStart = 0;
+  i32 line = 0;
+  c16* text = buffer.text;
+  CursorPos res = {};
+
+  for (i32 i = 0; i < buffer.textLen; i++) {
+    if (text[i] == L'\n' || i == buffer.textLen - 1) {
+      if (lineStart <= buffer.cursor && buffer.cursor <= i) {
+        res.row = line;
+        res.col = i - lineStart;
+        res.lineStart = lineStart;
+        return res;
+      }
+      lineStart = i + 1;
+      line++;
+    }
+  }
+  return res;
+}
+
+i32 GetLinesCount(Buffer& buffer) {
+  i32 res = 1;
+  for (i32 i = 0; i < buffer.textLen; i++) {
+    if (buffer.text[i] == L'\n')
+      res++;
+  }
+  return res;
+}
+
+void DrawBuffer(Buffer& buffer, Rect rect) {
+  f32 padding = 10;
+  f32 x = rect.x + padding;
+  f32 y = rect.y + padding;
+  i32 size = buffer.textLen;
+  c16* text = buffer.text;
+
+  f32 fontHeight = GetFontHeight();
+  f32 runningY = y - buffer.offset.current;
+  i32 lineStart = 0;
+  i32 currentLine = 0;
+
+  CursorPos cursor = GetCursorPos(buffer);
+  CharBuffer buff = {};
+  for (i32 i = 0; i < size; i++) {
+    if (text[i] == L'\n' || i == size - 1) {
+      if (runningY > -fontHeight) {
+
+        i32 isLineSelected = &buffer == selectedBuffer && currentLine == cursor.row;
+        if (isLineSelected) {
+          PaintRect(rect.x, runningY, rect.width, fontHeight, lineColor);
+          SetColors(white, lineColor);
+        } else
+          SetColors(lineNumberColor, bg);
+
+        buff.len = 0;
+        Append(&buff, currentLine + 1);
+
+        SetTextAlign(appState.dc, TA_RIGHT);
+        TextOutW(appState.dc, x + 40, round(runningY), buff.content, buff.len);
+
+        if (isLineSelected)
+          SetColors(white, lineColor);
+        else
+          SetColors(fontColor, bg);
+
+        SetTextAlign(appState.dc, TA_LEFT);
+        TextOutW(appState.dc, x + 50, round(runningY), text + lineStart, i - lineStart + 1);
+
+        if (isLineSelected) {
+          SetColors(cursorTextColor, cursorColor);
+          f32 cursorOffset =
+              GetTextWidth(appState.dc, buffer.text, cursor.lineStart, buffer.cursor);
+
+          SIZE size;
+          GetTextExtentPoint32W(appState.dc, L"w", 1, &size);
+          i32 charWidth = size.cx;
+          PaintRect(x + 50 + cursorOffset, round(runningY), charWidth, fontHeight, cursorColor);
+          TextOutW(appState.dc, x + 50 + cursorOffset, round(runningY), text + buffer.cursor, 1);
+        }
+      }
+
+      lineStart = i + 1;
+      runningY += fontHeight;
+      currentLine++;
+
+      if (runningY > appState.size.y)
+        break;
+    }
+  }
+  TextOutW(appState.dc, x, rect.y + rect.height - GetFontHeight() - padding, buffer.path,
+           wstrlen(buffer.path));
+}
+
+void DrawInfo() {
+  f32 fontHeight = GetFontHeight();
+  v2 padding = {10, 10};
+  v2 size = {300, 300};
+  v2 topLeft = appState.size - padding - size;
+  v3 bg = {0.2, 0.1, 0.1};
+  PaintRect(topLeft.x, topLeft.y, size.x, size.y, bg);
+
+  topLeft += vec2(5, 5);
+  SetColors(white, bg);
+
+  CharBuffer buf = {};
+  Append(&buf, L"FPS: ");
+  Append(&buf, (i32)(round(1000.0f / appState.lastFrameTimeMs)));
+
+  TextOutW(appState.dc, topLeft.x, topLeft.y, buf.content, buf.len);
+  topLeft.y += fontHeight;
+  buf.len = 0;
+
+  Append(&buf, L"Desired: ");
+  Append(&buf, (i32)(selectedBuffer->desiredOffset));
+
+  TextOutW(appState.dc, topLeft.x, topLeft.y, buf.content, buf.len);
+  topLeft.y += fontHeight;
+  buf.len = 0;
+}
+
+extern "C" void WinMainCRTStartup() {
+  SetProcessDPIAware();
+  InitAnimations();
+  win = OpenWindow(OnEvent);
+  appState.window = win;
+
+#ifdef FULLSCREEN
+  appState.isFullscreen = true;
+  SetFullscreen(appState.window, appState.isFullscreen);
+#endif
+
+  ShowWindow(win, SW_SHOW);
+
+  windowDc = GetDC(win);
+  drawingDc = CreateCompatibleDC(0);
+  appState.dc = drawingDc;
+
+  i64 freq = GetPerfFrequency();
+  i64 appStart = GetPerfCounter();
+  i64 frameStart = appStart;
+
+  appState.isRunning = true;
+  // currentBitmap = &canvas;
+  // currentDc = drawingDc;
+
+  Init();
+  while (appState.isRunning) {
+    MSG msg;
+
+    while (PeekMessageW(&msg, 0, 0, 0, PM_REMOVE)) {
+      TranslateMessage(&msg);
+      DispatchMessage(&msg);
+    }
+    memset(canvas.pixels, round(bg.x * 255.0f), canvas.width * canvas.height * 4);
+    SelectFont(appState.dc, font);
+
+    SelectBitmap(drawingDc, bitmap);
+
+    Rect left = {0, 0, appState.size.x / 3, appState.size.y};
+    Rect middle = {left.x + left.width, left.y, left.width, left.height};
+    Rect right = {middle.x + middle.width, middle.y, middle.width, middle.height};
+
+    DrawBuffer(leftBuffer, left);
+    DrawBuffer(middleBuffer, middle);
+    DrawBuffer(rightBuffer, right);
+
+    PaintRect(left.x + left.width - 1, left.y, 2, left.height, line);
+    PaintRect(middle.x + middle.width - 1, middle.y, 2, middle.height, line);
+
+    DrawInfo();
+    // Draw(appState);
+    PaintWindow();
+
+    f32 deltaSec = appState.lastFrameTimeMs / 1000.0f;
+    UpdateSpring(&leftBuffer.offset, deltaSec);
+    UpdateSpring(&middleBuffer.offset, deltaSec);
+    UpdateSpring(&rightBuffer.offset, deltaSec);
+
+    i64 frameEnd = GetPerfCounter();
+    appState.lastFrameTimeMs = (f32)(frameEnd - frameStart) / (f32)freq * 1000.0f;
+    frameStart = frameEnd;
+    appState.appTimeMs = (f32)(frameEnd - appStart) / (f32)freq * 1000.0f;
+  }
+  // Teardown(appState);
+
+  PostQuitMessage(0);
+  ExitProcess(0);
+}

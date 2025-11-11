@@ -7,11 +7,11 @@ REM set linker=-Xlinker /subsystem:windows
 set common=-Wall -Wextra
 
 rem set conf=-O3 
- set conf=-g
+set conf=-g
 
 if not exist build mkdir build
 
-clang %common% entry.cpp %linker% %conf% -o build\main.exe %libs%
+clang %common% v2.cpp %linker% %conf% -o build\main.exe %libs%
 
 if %ERRORLEVEL% EQU 0 (
    call build\main.exe

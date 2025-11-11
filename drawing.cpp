@@ -136,6 +136,7 @@ void PrintText(i32 x, i32 y, char* text, i32 size) {
 }
 
 void PrintParagraph(HDC dc, i32 x, i32 y, char* text, i32 size) {
+
   i32 lineStart = 0;
   for (i32 i = 0; i < size; i++) {
     if (text[i] == '\n' || i == size - 1) {

@@ -11,7 +11,7 @@ set CompilerOptionsProd=/O2
 set LinkerOptions=/nodefaultlib /subsystem:windows /incremental:no /out:build\main.exe
 set Libs=user32.lib gdi32.lib kernel32.lib dwmapi.lib
 
-cl %CommonCompilerOptions% %CompilerOptionsProd% entry.cpp /link %LinkerOptions% %Libs% 
+cl %CommonCompilerOptions% %CompilerOptionsProd% v2.cpp /link %LinkerOptions% %Libs% 
 
 
 pushd build
