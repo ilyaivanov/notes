@@ -11,7 +11,7 @@ rem set conf=-O3
 
 if not exist build mkdir build
 
-clang -Wall -Wextra entry.cpp %linker% %conf% -o build\main.exe %libs%
+clang %common% entry.cpp %linker% %conf% -o build\main.exe %libs%
 
 if %ERRORLEVEL% EQU 0 (
    call build\main.exe

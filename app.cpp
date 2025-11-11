@@ -5,11 +5,13 @@
 #include "sincos.cpp"
 #include "anim.cpp"
 #include "utils.cpp"
+#include "modal.cpp"
+#include <winuser.h>
 
-const wchar_t* path = L"main.cpp";
+wchar_t* path = (c16*)L"main.cpp";
 const wchar_t* libPath = L"lib.dll";
 
-enum Mode { Normal, Insert, VisualLine };
+enum Mode { Normal, Insert, VisualLine, Modal };
 
 Mode mode = Normal;
 i32 fontSize = 14;
@@ -40,6 +42,10 @@ f32 cursorBlinkStart = 0;
 
 char* out;
 u32 len = 0;
+
+bool isBuildFailed;
+char* buildOut;
+u32 buildOutLen;
 
 void AddHardLineBreak(i32 at) {
   buffer.lines[buffer.linesLen].textPos = at;
@@ -126,17 +132,7 @@ HMODULE libModule;
 typedef void RenderApp(MyBitmap* bitmap, AppState* app);
 RenderApp* render;
 
-void Init(AppState& app) {
-  InitAnimations();
-
-  out = (char*)valloc(2000);
-
-  segoe = CreateAppFont(L"Segoe UI", FW_NORMAL, 14, CLEARTYPE_QUALITY);
-  consolas = CreateAppFont(L"Consolas", FW_NORMAL, 14, ANTIALIASED_QUALITY);
-  // consolasAliased = CreateAppFont(L"Consolas", FW_NORMAL, 14, ANTIALIASED_QUALITY);
-
-  UseFont(consolas);
-
+void LoadFile(c16* path) {
   i64 size = GetMyFileSize(path);
   c8* file = (c8*)valloc(size);
   ReadFileInto(path, size, file);
@@ -144,11 +140,6 @@ void Init(AppState& app) {
   c16* text = (c16*)valloc(wideCharsCount * sizeof(c16));
   MultiByteToWideChar(CP_UTF8, MB_PRECOMPOSED, file, size, text, wideCharsCount);
 
-  buffer.linesCapacity = 1024;
-  buffer.lines = (LineBreak*)valloc(buffer.linesCapacity * sizeof(LineBreak));
-
-  buffer.textCapacity = MB(2) / sizeof(c16);
-  buffer.text = (c16*)valloc(buffer.textCapacity * sizeof(c16));
   i32 bufferPos = 0;
   for (i32 i = 0; i < wideCharsCount; i++) {
     if (text[i] != '\r') {
@@ -157,6 +148,29 @@ void Init(AppState& app) {
     }
   }
   buffer.textLen = bufferPos;
+
+  RebuildLines();
+}
+
+void Init(AppState& app) {
+  InitAnimations();
+
+  out = (char*)valloc(2000);
+  buildOut = (char*)valloc(2000);
+
+  segoe = CreateAppFont(L"Segoe UI", FW_NORMAL, 14, CLEARTYPE_QUALITY);
+  consolas = CreateAppFont(L"Consolas", FW_NORMAL, 14, ANTIALIASED_QUALITY);
+  // consolasAliased = CreateAppFont(L"Consolas", FW_NORMAL, 14, ANTIALIASED_QUALITY);
+
+  UseFont(consolas);
+
+  buffer.linesCapacity = 1024;
+  buffer.lines = (LineBreak*)valloc(buffer.linesCapacity * sizeof(LineBreak));
+
+  buffer.textCapacity = MB(2) / sizeof(c16);
+  buffer.text = (c16*)valloc(buffer.textCapacity * sizeof(c16));
+
+  LoadFile(path);
 
   OnResize(app);
 }
@@ -321,31 +335,56 @@ void Rebuild() {
   if (libModule) {
     FreeLibrary(libModule);
     libModule = NULL;
+    render = NULL;
   }
   // need to wait untill dll is released, otherwise compiler complains it can't remove dll file
   Sleep(40);
 
-  char* buildOut = (char*)valloc(2000);
-  u32 buildOutLen = 0;
-  char* cmd = (char*)"clang-cl /GR- /FC /GS- /LDd /Felib.dll main.cpp /link /nodefaultlib "
+  buildOutLen = 0;
+  char* cmd = (char*)"clang-cl /GR- /Zi /Od /FC /GS- /LDd /Felib.dll main.cpp /link /nodefaultlib "
                      "-EXPORT:RenderApp "
                      "user32.lib kernel32.lib gdi32.lib winmm.lib shell32.lib dwmapi.lib uuid.lib "
                      "ole32.lib";
 
-  RunCommand(cmd, buildOut, &buildOutLen);
+  DWORD status = RunCommand(cmd, buildOut, &buildOutLen);
 
+  isBuildFailed = status != 0;
   // RunCommand((char*)"cl main.cpp /link /nodefaultlib /subsystem:console kernel32.lib",
   // buildOut, &buildOutLen);
 
-  libModule = LoadLibrary(libPath);
+  if (!isBuildFailed) {
+    libModule = LoadLibrary(libPath);
 
-  if (libModule) {
-    render = (RenderApp*)(void*)GetProcAddress(libModule, "RenderApp");
+    if (libModule) {
+      render = (RenderApp*)(void*)GetProcAddress(libModule, "RenderApp");
+    }
   }
 }
 
 void OnKeyPress(u32 code, AppState& app) {
-  if (mode == VisualLine) {
+  if (mode == Modal) {
+
+    if (code == VK_ESCAPE) {
+      mode = Normal;
+    } else if (code == VK_BACK)
+      RemoveCharFromModal();
+    else if (code == L'N' && IsKeyPressed(VK_CONTROL))
+      ModalGoDown();
+    else if (code == L'P' && IsKeyPressed(VK_CONTROL))
+      ModalGoUp();
+    else if (code == VK_RETURN) {
+      SaveFile();
+      if (filesLen > 0) {
+
+        path = files[selectedFile].path;
+        LoadFile(path);
+        buffer.cursor = 0;
+        mode = Normal;
+      }
+    } else if (IsAlphaNumeric(code))
+      AddCharToModal(code);
+
+  } else if (mode == VisualLine) {
 
     isPartialMatch = false;
     currentCommand[currentCommandLen++] = code;
@@ -411,6 +450,11 @@ void OnKeyPress(u32 code, AppState& app) {
     if (IsCommand(L"V")) {
       mode = VisualLine;
       buffer.selectionStart = buffer.cursor;
+    }
+
+    if (IsCommand(L" f")) {
+      app.isFullscreen = !app.isFullscreen;
+      SetFullscreen(app.window, app.isFullscreen);
     }
 
     if (IsCommand(L"gg")) {
@@ -552,6 +596,7 @@ void OnKeyPress(u32 code, AppState& app) {
     if (IsCommand(L"q")) {
       app.isRunning = false;
     }
+
     if (IsCommand(L"l")) {
       MoveRight(buffer);
       UpdateDesiredOffset(buffer);
@@ -563,9 +608,11 @@ void OnKeyPress(u32 code, AppState& app) {
       UpdateDesiredOffset(buffer);
       OnCursorUpdated(app);
     }
+
     if (IsCommand(L'J')) {
       scrollOffset.target += GetFontHeight() * 3;
     }
+
     if (IsCommand(L'K')) {
       scrollOffset.target -= GetFontHeight() * 3;
     }
@@ -640,6 +687,11 @@ void OnKeyPress(u32 code, AppState& app) {
       OnCursorUpdated(app);
       RebuildLines();
       UpdateDesiredOffset(buffer);
+    }
+
+    if (IsCommand(L" sf")) {
+      mode = Modal;
+      InitModal();
     }
 
     if (!isPartialMatch) {
@@ -776,7 +828,12 @@ void Draw(AppState& app) {
   SetAlign(TA_RIGHT);
   PrintText(app.size.x - 10, app.size.y - fontHeight * 2 - 8, currentCommand, currentCommandLen);
 
-  if (render) {
+  if (mode == Modal) {
+    RenderModal(app);
+  }
+  if (isBuildFailed) {
+    PrintParagraph(app.dc, app.size.x - 10, 10, buildOut, buildOutLen);
+  } else if (render) {
     SetColors(white, black);
     render(currentBitmap, &app);
   }

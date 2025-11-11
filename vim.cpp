@@ -168,18 +168,6 @@ void MoveUp(Buffer& b) {
       ClampCursor(b, prevLineStart + FindLineOffsetByDistance(b, prevLineStart, b.desiredOffset));
 }
 
-i32 Max(i32 a, i32 b) {
-  if (a > b)
-    return a;
-  return b;
-}
-
-i32 Min(i32 a, i32 b) {
-  if (a < b)
-    return a;
-  return b;
-}
-
 u32 IsAlphaNumeric(c16 ch) {
   return (ch >= L'0' && ch <= L'9') || (ch >= L'a' && ch <= L'z') || (ch >= L'A' && ch <= L'Z');
 }

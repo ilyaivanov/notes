@@ -1,21 +1,20 @@
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
 
-int len(char* str) {
-  int res = 0;
-  while (str[res])
-    res++;
-  return res;
-}
+@echo off
 
-void Print(char* str) {
-  HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
-  DWORD bytesWritten;
-  WriteFile(out, str, len(str), &bytesWritten, NULL);
-}
+    set libs = -lkernel32 - luser32 - lgdi32.lib - ldwmapi.lib - lwinmm.lib set linker =
+                   -Xlinker / NODEFAULTLIB - Xlinker / entry : WinMainCRTStartup -
+                   Xlinker / subsystem : windows REM set linker = -Xlinker / subsystem
+    : windows
 
-void mainCRTStartup() {
-  char* s = "what's up Hello\n";
-  Print(s);
-  Print("hi there");
-}
+          set common = -Wall - Wextra
+
+                                   rem set conf = -O3 set conf =
+                           -g
+
+                           if not exist build mkdir build
+
+                               clang %
+                           common % entry.cpp % linker % % conf % -o build\main.exe % libs %
+
+                           if % ERRORLEVEL %
+                           EQU 0(call build\main.exe) else(echo Compilation failed.)

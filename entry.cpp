@@ -1,5 +1,4 @@
 #define UNICODE
-#define _UNICODE
 #define WIN32_LEAN_AND_MEAN
 
 #include "win32.cpp"
@@ -23,10 +22,23 @@ void PaintWindow() {
 
 LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
   switch (message) {
+
+  case WM_SYSKEYDOWN:
+  case WM_KEYDOWN:
+    if ((IsKeyPressed(VK_CONTROL) && wParam != VK_CONTROL) ||
+        (IsKeyPressed(VK_MENU) && wParam != VK_MENU) || wParam == VK_ESCAPE || wParam == VK_TAB ||
+        wParam == VK_BACK)
+      OnKeyPress(wParam, appState);
+    break;
   case WM_CHAR: {
     OnKeyPress(wParam, appState);
     break;
   }
+  case WM_SYSCOMMAND:
+    if (wParam == SC_KEYMENU)
+      return 0;
+
+    break;
   case WM_DESTROY:
     PostQuitMessage(0);
     appState.isRunning = false;

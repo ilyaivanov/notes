@@ -135,6 +135,17 @@ void PrintText(i32 x, i32 y, char* text, i32 size) {
   TextOutA(currentDc, x, y, text, size);
 }
 
+void PrintParagraph(HDC dc, i32 x, i32 y, char* text, i32 size) {
+  i32 lineStart = 0;
+  for (i32 i = 0; i < size; i++) {
+    if (text[i] == '\n' || i == size - 1) {
+      TextOutA(dc, x, y, text + lineStart, i - lineStart + 1);
+      lineStart = i + 1;
+      y += 25;
+    }
+  }
+}
+
 f32 GetFontHeight() {
   TEXTMETRIC textMetric;
   GetTextMetrics(currentDc, &textMetric);

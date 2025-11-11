@@ -74,6 +74,18 @@ bool operator!=(v3& a, v3& b) {
   return a.x != b.x || a.y != b.y || a.z != b.z;
 }
 
+i32 Max(i32 a, i32 b) {
+  if (a > b)
+    return a;
+  return b;
+}
+
+i32 Min(i32 a, i32 b) {
+  if (a < b)
+    return a;
+  return b;
+}
+
 struct v4 {
   union {
     struct {
@@ -88,6 +100,7 @@ struct v4 {
 struct AppState {
   HDC dc;
   HWND window;
+  bool isFullscreen;
   bool isRunning;
   f32 appTimeMs;
   f32 lastFrameTimeMs;
@@ -403,13 +416,13 @@ void AppendLine(CharBuffer* buff, i32 val) {
   AppendLine(buff);
 }
 
-void RunCommand(char* cmd, char* output, u32* len) {
+DWORD RunCommand(char* cmd, char* output, u32* len) {
   *len = 0;
   HANDLE hRead, hWrite;
   SECURITY_ATTRIBUTES sa = {sizeof(SECURITY_ATTRIBUTES), NULL, TRUE};
 
   if (!CreatePipe(&hRead, &hWrite, &sa, KB(128)))
-    return;
+    return 0;
 
   // Ensure the read handle to the pipe is not inherited.
   SetHandleInformation(hRead, HANDLE_FLAG_INHERIT, 0);
@@ -425,7 +438,7 @@ void RunCommand(char* cmd, char* output, u32* len) {
   if (!CreateProcessA(NULL, cmd, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
     CloseHandle(hWrite);
     CloseHandle(hRead);
-    return;
+    return 0;
   }
 
   CloseHandle(hWrite);
@@ -440,9 +453,13 @@ void RunCommand(char* cmd, char* output, u32* len) {
   output[totalRead] = '\0';
   *len = totalRead;
 
+  DWORD statusCode = 0;
+  GetExitCodeProcess(pi.hProcess, &statusCode);
+
   CloseHandle(pi.hProcess);
   CloseHandle(pi.hThread);
   CloseHandle(hRead);
+  return statusCode;
 }
 
 i32 strlen(char* str) {
