@@ -198,6 +198,10 @@ void EnterInsertMode() {
   mode = Insert;
   ignoreNextCharEvent = true;
 }
+void EnterReplaceCharMode() {
+  mode = ReplaceChar;
+  ignoreNextCharEvent = true;
+}
 
 void RemoveCharFromLeft() {
   if (selectedBuffer->cursor > 0) {
@@ -229,6 +233,17 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         InsertCharAtCursor('\n');
       else if (wParam == VK_BACK)
         RemoveCharFromLeft();
+
+    } else if (mode == ReplaceChar) {
+      if (wParam == VK_ESCAPE) {
+        mode = Normal;
+      }
+      if (wParam >= ' ' && wParam <= '~') {
+        RemoveCharAt(GetSelectedBuffer(), selectedBuffer->cursor);
+        selectedBuffer->isModified = true;
+        InsertCharAt(GetSelectedBuffer(), selectedBuffer->cursor, wParam);
+        mode = Normal;
+      }
 
     } else if (mode == Normal) {
       if (wParam == L'.')
@@ -283,6 +298,9 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         HandleMovement(wParam);
       }
     } else if (mode == Normal) {
+      if (wParam == 'R') {
+        EnterReplaceCharMode();
+      }
       if (wParam == 'O' && IsKeyPressed(VK_SHIFT)) {
         i32 target = 0;
         target = FindLineStartv2(GetSelectedBuffer(), selectedBuffer->cursor);
@@ -489,13 +507,13 @@ void DrawBuffer(Buffer& buffer, Rect rect) {
   CharBuffer buff = {};
 
   v3 lineColorToUse = lineColor;
-  if (mode == Insert)
+  if (mode == Insert || mode == ReplaceChar)
     lineColorToUse = lineInsertColor;
   else if (mode == VisualLine)
     lineColorToUse = lineVisualColor;
 
   v3 cursorColorToUse = cursorColor;
-  if (mode == Insert)
+  if (mode == Insert || mode == ReplaceChar)
     cursorColorToUse = cursorInsertColor;
   if (mode == VisualLine)
     cursorColorToUse = cursorVisualColor;
