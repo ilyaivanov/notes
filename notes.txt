@@ -3,7 +3,7 @@ Replace Nvim with kickstart.init
  - Visual mode
  y C D motions
  y r (postponed R)
- - y p
+ y y p
  - i I a A
  y 0 $ 
  - .
@@ -12,5 +12,7 @@ Replace Nvim with kickstart.init
  - dd dl cl cc
  - cib cab dib dab (consider creating a managable system for motions)
  - Integrate clang formatted 
- - show scroll offsets
+ y show scroll offsets
+ - <C-w> in insert mode
+ - move lines around (for visual line mode move all lines)
 
