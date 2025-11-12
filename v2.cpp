@@ -147,7 +147,7 @@ void ResizeFont(i32 newSize) {
 
 void Init() {
   ResizeFont(initialFontSize);
-  InitBuffer(L"main.cpp", leftBuffer);
+  InitBuffer(L"vim.cpp", leftBuffer);
   InitBuffer(L"v2.cpp", middleBuffer);
   InitBuffer(L"notes.txt", rightBuffer);
   selectedBuffer = &rightBuffer;
@@ -159,11 +159,77 @@ f32 GetFontHeight() {
   return textMetric.tmAscent + textMetric.tmDescent;
 }
 
+struct CursorPos {
+  i32 lineStart;
+  i32 row;
+  i32 col;
+};
+
+CursorPos GetCursorPos(Buffer& buffer) {
+  i32 lineStart = 0;
+  i32 line = 0;
+  c16* text = buffer.text;
+  CursorPos res = {};
+
+  for (i32 i = 0; i < buffer.textLen; i++) {
+    if (text[i] == L'\n' || i == buffer.textLen - 1) {
+      if (lineStart <= buffer.cursor && buffer.cursor <= i) {
+        res.row = line;
+        res.col = i - lineStart;
+        res.lineStart = lineStart;
+        return res;
+      }
+      lineStart = i + 1;
+      line++;
+    }
+  }
+  return res;
+}
+
+i32 GetLinesCount(Buffer& buffer) {
+  i32 res = 1;
+  for (i32 i = 0; i < buffer.textLen; i++) {
+    if (buffer.text[i] == L'\n')
+      res++;
+  }
+  return res;
+}
+
+void ScrollIntoCursor() {
+  CursorPos pos = GetCursorPos(GetSelectedBuffer());
+
+  f32 cursorY = pos.row * GetFontHeight();
+
+  // TODO: this should be a rect, not appState.size
+  f32 offset = (cursorY - appState.size.y / 2.0f + GetFontHeight() / 2.0f);
+  f32 maxOffset = GetLinesCount(GetSelectedBuffer()) * GetFontHeight() - appState.size.y;
+  selectedBuffer->offset.target = clamp(offset, 0.0f, maxOffset);
+}
+
+void ScrollIntoCursorIfNeeded() {
+  CursorPos pos = GetCursorPos(GetSelectedBuffer());
+
+  f32 cursorY = pos.row * GetFontHeight();
+  if (cursorY < selectedBuffer->offset.target ||
+      cursorY + GetFontHeight() > selectedBuffer->offset.target + appState.size.y)
+    ScrollIntoCursor();
+}
+
+void SetCursor(i32 pos) {
+  selectedBuffer->cursor = ClampCursor(GetSelectedBuffer(), pos);
+  UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+  ScrollIntoCursorIfNeeded();
+}
+
+void SetCursorKeepDesiredOffset(i32 pos) {
+  selectedBuffer->cursor = pos;
+}
+
 void HandleMovement(char ch) {
   if (ch == L'J') {
-    MoveDown(GetSelectedBuffer(), appState.dc);
+    SetCursor(MoveDown(GetSelectedBuffer(), selectedBuffer->cursor, appState.dc));
   } else if (ch == L'K') {
-    MoveUp(GetSelectedBuffer(), appState.dc);
+    SetCursor(MoveUp(GetSelectedBuffer(), selectedBuffer->cursor, appState.dc));
   } else if (ch == L'H') {
     MoveLeft(GetSelectedBuffer());
     UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
@@ -210,15 +276,6 @@ void RemoveCharFromLeft() {
     UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
     selectedBuffer->isModified = true;
   }
-}
-
-void SetCursor(i32 pos) {
-  selectedBuffer->cursor = pos;
-  UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
-}
-
-void SetCursorKeepDesiredOffset(i32 pos) {
-  selectedBuffer->cursor = pos;
 }
 
 LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -274,11 +331,10 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       }
 
       else if (wParam == 'D') {
-        RemoveChars(GetSelectedBuffer(), selStartLine, selEndLine);
-        selectedBuffer->cursor = ClampCursor(
-            GetSelectedBuffer(),
-            selStartLine + FindLineOffsetByDistance(GetSelectedBuffer(), appState.dc, selStartLine,
-                                                    selectedBuffer->desiredOffset));
+        Buffer& b = GetSelectedBuffer();
+        RemoveChars(b, selStartLine, selEndLine);
+        SetCursor(selStartLine + FindLineOffsetByDistance(b, appState.dc, selStartLine,
+                                                          selectedBuffer->desiredOffset));
         mode = Normal;
       }
 
@@ -349,8 +405,33 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
           selectedBuffer->isModified = true;
         }
       }
+      if (wParam == 'C' && IsKeyPressed(VK_SHIFT)) {
+        RemoveChars(GetSelectedBuffer(), selectedBuffer->cursor,
+                    FindLineEndv2(GetSelectedBuffer(), selectedBuffer->cursor) - 1);
+        EnterInsertMode();
+      }
+      if (wParam == 'D' && IsKeyPressed(VK_SHIFT)) {
+        RemoveChars(GetSelectedBuffer(), selectedBuffer->cursor,
+                    FindLineEndv2(GetSelectedBuffer(), selectedBuffer->cursor) - 1);
+      }
+
+      if (wParam == '0') {
+        Buffer& b = GetSelectedBuffer();
+        i32 start = FindLineStartv2(b, selectedBuffer->cursor);
+        while (b.text[start] == ' ')
+          start++;
+        SetCursor(start);
+      }
+      if (wParam == '4' && IsKeyPressed(VK_SHIFT)) {
+        Buffer& b = GetSelectedBuffer();
+        i32 end = FindLineEndv2(b, selectedBuffer->cursor);
+        SetCursor(end);
+      }
       if (wParam == 'I') {
         EnterInsertMode();
+      }
+      if (wParam == 'Z') {
+        ScrollIntoCursor();
       }
       if (wParam == 'Q') {
         PostQuitMessage(0);
@@ -370,11 +451,21 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         selectedBuffer->offset.target += GetFontHeight() * 3;
       else if (wParam == L'K' && IsKeyPressed(VK_CONTROL))
         selectedBuffer->offset.target -= GetFontHeight() * 3;
-      else if (wParam == L'D' && IsKeyPressed(VK_CONTROL))
-        selectedBuffer->offset.target += appState.size.y / 2;
-      else if (wParam == L'U' && IsKeyPressed(VK_CONTROL))
-        selectedBuffer->offset.target -= appState.size.y / 2;
-      else {
+      else if (wParam == L'D' && IsKeyPressed(VK_CONTROL)) {
+        i32 linesToSkip = round(appState.size.y / 2.0f / GetFontHeight());
+        i32 cursor = selectedBuffer->cursor;
+        for (i32 i = 0; i < linesToSkip; i++)
+          cursor = MoveDown(GetSelectedBuffer(), cursor, appState.dc);
+        SetCursor(cursor);
+
+      } else if (wParam == L'U' && IsKeyPressed(VK_CONTROL)) {
+        i32 linesToSkip = round(appState.size.y / 2.0f / GetFontHeight());
+        i32 cursor = selectedBuffer->cursor;
+        for (i32 i = 0; i < linesToSkip; i++)
+          cursor = MoveUp(GetSelectedBuffer(), cursor, appState.dc);
+        SetCursor(cursor);
+
+      } else {
         HandleMovement(wParam);
       }
     }
@@ -438,6 +529,13 @@ u32 ColorFromVec(v3 color) {
   return r << 16 | g << 8 | b << 0;
 }
 
+struct Rect {
+  f32 x;
+  f32 y;
+  f32 width;
+  f32 height;
+};
+
 void PaintRect(i32 x, i32 y, i32 width, i32 height, v3 color) {
   u32 c = ColorFromVec(color);
   for (i32 i = x; i < x + width; i++) {
@@ -448,47 +546,8 @@ void PaintRect(i32 x, i32 y, i32 width, i32 height, v3 color) {
   }
 }
 
-struct Rect {
-  f32 x;
-  f32 y;
-  f32 width;
-  f32 height;
-};
-
-struct CursorPos {
-  i32 lineStart;
-  i32 row;
-  i32 col;
-};
-
-CursorPos GetCursorPos(Buffer& buffer) {
-  i32 lineStart = 0;
-  i32 line = 0;
-  c16* text = buffer.text;
-  CursorPos res = {};
-
-  for (i32 i = 0; i < buffer.textLen; i++) {
-    if (text[i] == L'\n' || i == buffer.textLen - 1) {
-      if (lineStart <= buffer.cursor && buffer.cursor <= i) {
-        res.row = line;
-        res.col = i - lineStart;
-        res.lineStart = lineStart;
-        return res;
-      }
-      lineStart = i + 1;
-      line++;
-    }
-  }
-  return res;
-}
-
-i32 GetLinesCount(Buffer& buffer) {
-  i32 res = 1;
-  for (i32 i = 0; i < buffer.textLen; i++) {
-    if (buffer.text[i] == L'\n')
-      res++;
-  }
-  return res;
+void PaintRect(Rect rect, v3 color) {
+  PaintRect(rect.x, rect.y, rect.width, rect.height, color);
 }
 
 void DrawBuffer(Buffer& buffer, Rect rect) {
@@ -584,6 +643,19 @@ void DrawBuffer(Buffer& buffer, Rect rect) {
       if (runningY > appState.size.y)
         break;
     }
+  }
+
+  f32 pageHeight = GetLinesCount(buffer) * fontHeight;
+  if (pageHeight > rect.height) {
+    f32 scrollbarWidth = 10;
+    f32 scrollbarHeight = rect.height * rect.height / pageHeight;
+    f32 maxOffset = pageHeight - rect.height;
+    f32 maxScrollY = rect.height - scrollbarHeight;
+    f32 scrollY = lerp(0, maxScrollY, buffer.offset.current / maxOffset);
+
+    Rect scrollbar = {rect.x + rect.width - scrollbarWidth, scrollY, scrollbarWidth,
+                      scrollbarHeight};
+    PaintRect(scrollbar, vec3(0.3, 0.3, 0.3));
   }
 
   if (buffer.isModified)

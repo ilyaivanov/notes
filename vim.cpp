@@ -3,22 +3,6 @@
 #include "anim.cpp"
 // #include "drawing.cpp"
 
-f32 clamp(f32 v, f32 min, f32 max) {
-  if (v < min)
-    return min;
-  if (v > max)
-    return max;
-  return v;
-}
-
-i32 clamp(i32 v, i32 min, i32 max) {
-  if (v < min)
-    return min;
-  if (v > max)
-    return max;
-  return v;
-}
-
 struct LineBreak {
   // Soft line break is a text overflow break due to a limited screen width.
   // Non-soft (hard) line break is via \n
@@ -175,9 +159,9 @@ i32 FindLineOffsetByDistance(Buffer& b, HDC dc, i32 lineStart, f32 distanceFromL
   return offset;
 }
 
-void MoveDown(Buffer& b, HDC dc) {
-  i32 nextLineStart = b.cursor + 1;
-  if (b.text[b.cursor] != '\n') {
+i32 MoveDown(Buffer& b, i32 from, HDC dc) {
+  i32 nextLineStart = from + 1;
+  if (b.text[from] != '\n') {
     while (b.text[nextLineStart] != '\n' && nextLineStart < b.textLen)
       nextLineStart++;
 
@@ -188,14 +172,16 @@ void MoveDown(Buffer& b, HDC dc) {
   i32 nextPos = ClampCursor(b, nextLineStart +
                                    FindLineOffsetByDistance(b, dc, nextLineStart, b.desiredOffset));
   if (nextPos != b.textLen - 1 || b.text[nextPos] == '\n')
-    b.cursor = nextPos;
+    return nextPos;
+
+  return -1;
 }
 
-void MoveUp(Buffer& b, HDC dc) {
-  i32 prevLineStart = FindLineStartv2(b, FindLineStartv2(b, b.cursor) - 1);
+i32 MoveUp(Buffer& b, i32 from, HDC dc) {
+  i32 prevLineStart = FindLineStartv2(b, FindLineStartv2(b, from) - 1);
 
-  b.cursor = ClampCursor(b, prevLineStart +
-                                FindLineOffsetByDistance(b, dc, prevLineStart, b.desiredOffset));
+  return ClampCursor(b, prevLineStart +
+                            FindLineOffsetByDistance(b, dc, prevLineStart, b.desiredOffset));
 }
 
 u32 IsAlphaNumeric(c16 ch) {

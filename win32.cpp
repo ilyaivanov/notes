@@ -100,6 +100,26 @@ i32 Min(i32 a, i32 b) {
   return b;
 }
 
+f32 lerp(f32 from, f32 to, f32 v) {
+  return (1 - v) * from + to * v;
+}
+
+f32 clamp(f32 val, f32 min, f32 max) {
+  if (val < min)
+    return min;
+  if (val > max)
+    return max;
+  return val;
+}
+
+i32 clamp(i32 v, i32 min, i32 max) {
+  if (v < min)
+    return min;
+  if (v > max)
+    return max;
+  return v;
+}
+
 struct v4 {
   union {
     struct {
