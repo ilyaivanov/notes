@@ -7,7 +7,7 @@
 #include "anim.cpp"
 #include "vim.cpp"
 
-enum Mode { Normal, Insert, VisualLine, Visual, Modal };
+enum Mode { Normal, Insert, ReplaceChar, VisualLine, Visual, Modal };
 Mode mode = Normal;
 
 HWND win;
@@ -208,6 +208,15 @@ void RemoveCharFromLeft() {
   }
 }
 
+void SetCursor(i32 pos) {
+  selectedBuffer->cursor = pos;
+  UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+}
+
+void SetCursorKeepDesiredOffset(i32 pos) {
+  selectedBuffer->cursor = pos;
+}
+
 LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
   switch (message) {
   case WM_CHAR:
@@ -234,6 +243,11 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         mode = Normal;
       }
     }
+    if (mode == ReplaceChar) {
+      if (wParam == VK_ESCAPE) {
+        mode = Normal;
+      }
+    }
     if (mode == VisualLine) {
       i32 selStart = Min(selectedBuffer->cursor, selectedBuffer->selectionStart);
       i32 selEnd = Max(selectedBuffer->cursor, selectedBuffer->selectionStart);
@@ -245,8 +259,11 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       }
 
       else if (wParam == 'D') {
-        RemoveChars(GetSelectedBuffer(), selStartLine, selEndLine - 1);
-        selectedBuffer->cursor = ClampCursor(GetSelectedBuffer(), selStartLine - 1);
+        RemoveChars(GetSelectedBuffer(), selStartLine, selEndLine);
+        selectedBuffer->cursor = ClampCursor(
+            GetSelectedBuffer(),
+            selStartLine + FindLineOffsetByDistance(GetSelectedBuffer(), appState.dc, selStartLine,
+                                                    selectedBuffer->desiredOffset));
         mode = Normal;
       }
 
@@ -256,11 +273,11 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         EnterInsertMode();
       }
 
-      // if (wParam == 'Y') {
-      //   ClipboardCopy(app.window, buffer.text + selStartLine, selEndLine - selStartLine);
-      //   mode = Normal;
-      // }
-      //
+      if (wParam == 'Y') {
+        ClipboardCopy(appState.window, selectedBuffer->text + selStartLine,
+                      selEndLine - selStartLine + 1);
+        mode = Normal;
+      }
 
       else {
         HandleMovement(wParam);
@@ -283,6 +300,23 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         EnterInsertMode();
         UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
       }
+      if (wParam == 'P') {
+        i32 len;
+        c16* text = ClipboardPaste(appState.window, &len);
+
+        i32 at = selectedBuffer->cursor;
+        i32 cursorPos = at + len;
+
+        if (HasNewLine(text)) {
+          at = FindLineEndv2(GetSelectedBuffer(), at) + 1;
+          cursorPos = at;
+        }
+
+        InsertCharsAt(GetSelectedBuffer(), at, text, len);
+        vfree(text);
+        SetCursor(cursorPos);
+      }
+
       if (wParam == 'V' && IsKeyPressed(VK_SHIFT)) {
         selectedBuffer->selectionStart = selectedBuffer->cursor;
         mode = VisualLine;

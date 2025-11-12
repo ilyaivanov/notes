@@ -206,6 +206,16 @@ i32 IsWhitespace(c16 ch) {
   return ch == L' ' || ch == L'\n';
 }
 
+bool HasNewLine(c16* text) {
+  int i = 0;
+  while (text[i]) {
+    if (text[i] == L'\n')
+      return true;
+    i++;
+  }
+  return false;
+}
+
 u32 IsPunctuation(c16 ch) {
   // use a lookup table
   const c16* punctuation = L"!\"#$%&'()*+,-./:;<=>?@[\\]^`{|}~";

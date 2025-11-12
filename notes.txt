@@ -3,7 +3,12 @@ Replace Nvim with kickstart.init
  - Visual mode
  - C D motions
  - r R
+ - y p
  - i I a A
  - 0 $ 
- - cib cab dib dab (consider creating a managable system for this)
+ - .
+ - gg G
+ - f (will postpone F t T)
+ - cib cab dib dab (consider creating a managable system for motions)
+ - Integrate clang formatted 
 
