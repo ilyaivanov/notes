@@ -7,6 +7,9 @@
 #include "anim.cpp"
 #include "vim.cpp"
 
+enum Mode { Normal, Insert, VisualLine, Visual, Modal };
+Mode mode = Normal;
+
 HWND win;
 AppState appState;
 HFONT font;
@@ -24,7 +27,9 @@ v3 red = {1, 0.2, 0.2};
 v3 line = {0.1, 0.1, 0.1};
 v3 lineNumberColor = {0.3, 0.3, 0.3};
 v3 lineColor = {0.1, 0.1, 0.1};
+v3 lineInsertColor = {0.15, 0.1, 0.1};
 v3 cursorColor = {1, 220.0f / 255.0f, 50.0f / 255.0f};
+v3 cursorInsertColor = {1, 60.0f / 255.0f, 60.0f / 255.0f};
 v3 cursorTextColor = {0.05, 0.05, 0.05};
 
 HBITMAP bitmap;
@@ -139,45 +144,95 @@ f32 GetFontHeight() {
   return textMetric.tmAscent + textMetric.tmDescent;
 }
 
+void HandleMovement(char ch) {
+  if (ch == L'J') {
+    MoveDown(GetSelectedBuffer(), appState.dc);
+  } else if (ch == L'K') {
+    MoveUp(GetSelectedBuffer(), appState.dc);
+  } else if (ch == L'H') {
+    MoveLeft(GetSelectedBuffer());
+    UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+  } else if (ch == L'L') {
+    MoveRight(GetSelectedBuffer());
+    UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+  } else if (ch == 'W' && IsKeyPressed(VK_SHIFT)) {
+    selectedBuffer->cursor = JumpWordForwardIgnorePunctuation(GetSelectedBuffer());
+    UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+  } else if (ch == 'B' && IsKeyPressed(VK_SHIFT)) {
+    selectedBuffer->cursor = JumpWordBackwardIgnorePunctuation(GetSelectedBuffer());
+    UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+  } else if (ch == 'W') {
+    selectedBuffer->cursor = JumpWordForward(GetSelectedBuffer());
+    UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+  } else if (ch == 'B') {
+    selectedBuffer->cursor = JumpWordBackward(GetSelectedBuffer());
+    UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+  }
+}
+
+bool ignoreNextCharEvent;
 LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
   switch (message) {
   case WM_CHAR:
-    if (wParam == L'.')
-      ResizeFont(fontSize + 1);
-    if (wParam == L',')
-      ResizeFont(fontSize - 1);
+    if (ignoreNextCharEvent)
+      ignoreNextCharEvent = false;
+    else if (mode == Insert) {
+      if (wParam >= ' ' && wParam <= '~') {
+        InsertCharAt(GetSelectedBuffer(), selectedBuffer->cursor, wParam);
+        selectedBuffer->cursor++;
+        UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+      } else if (wParam == VK_BACK) {
+        if (selectedBuffer->cursor > 0) {
+          RemoveCharAt(GetSelectedBuffer(), selectedBuffer->cursor - 1);
+          selectedBuffer->cursor--;
+          UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+        }
+      }
+    } else if (mode == Normal) {
+      if (wParam == L'.')
+        ResizeFont(fontSize + 1);
+      else if (wParam == L',')
+        ResizeFont(fontSize - 1);
+    }
     break;
   case WM_KEYDOWN:
-    if (wParam == 'Q') {
-      PostQuitMessage(0);
-      appState.isRunning = false;
-    }
-    if (wParam == 'F') {
-      appState.isFullscreen = !appState.isFullscreen;
-      SetFullscreen(appState.window, appState.isFullscreen);
-    }
-    if (wParam == L'H' && IsKeyPressed(VK_CONTROL))
-      SelectLeftBuffer();
-    else if (wParam == L'L' && IsKeyPressed(VK_CONTROL))
-      SelectRightBuffer();
-    else if (wParam == L'J' && IsKeyPressed(VK_CONTROL))
-      selectedBuffer->offset.target += GetFontHeight() * 3;
-    else if (wParam == L'K' && IsKeyPressed(VK_CONTROL))
-      selectedBuffer->offset.target -= GetFontHeight() * 3;
-    else if (wParam == L'D' && IsKeyPressed(VK_CONTROL))
-      selectedBuffer->offset.target += appState.size.y / 2;
-    else if (wParam == L'U' && IsKeyPressed(VK_CONTROL))
-      selectedBuffer->offset.target -= appState.size.y / 2;
-    else if (wParam == L'J') {
-      MoveDown(GetSelectedBuffer(), appState.dc);
-    } else if (wParam == L'K') {
-      MoveUp(GetSelectedBuffer(), appState.dc);
-    } else if (wParam == L'H') {
-      MoveLeft(GetSelectedBuffer());
-      UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
-    } else if (wParam == L'L') {
-      MoveRight(GetSelectedBuffer());
-      UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+    if (mode == Insert) {
+      if (wParam == VK_ESCAPE) {
+        mode = Normal;
+      }
+    } else if (mode == Normal) {
+      if (wParam == 'X') {
+        if (selectedBuffer->cursor < selectedBuffer->textLen - 1) {
+          RemoveCharAt(GetSelectedBuffer(), selectedBuffer->cursor);
+        }
+      }
+      if (wParam == 'I') {
+        mode = Insert;
+        ignoreNextCharEvent = true;
+      }
+      if (wParam == 'Q') {
+        PostQuitMessage(0);
+        appState.isRunning = false;
+      }
+      if (wParam == 'F') {
+        appState.isFullscreen = !appState.isFullscreen;
+        SetFullscreen(appState.window, appState.isFullscreen);
+      }
+      if (wParam == L'H' && IsKeyPressed(VK_CONTROL))
+        SelectLeftBuffer();
+      else if (wParam == L'L' && IsKeyPressed(VK_CONTROL))
+        SelectRightBuffer();
+      else if (wParam == L'J' && IsKeyPressed(VK_CONTROL))
+        selectedBuffer->offset.target += GetFontHeight() * 3;
+      else if (wParam == L'K' && IsKeyPressed(VK_CONTROL))
+        selectedBuffer->offset.target -= GetFontHeight() * 3;
+      else if (wParam == L'D' && IsKeyPressed(VK_CONTROL))
+        selectedBuffer->offset.target += appState.size.y / 2;
+      else if (wParam == L'U' && IsKeyPressed(VK_CONTROL))
+        selectedBuffer->offset.target -= appState.size.y / 2;
+      else {
+        HandleMovement(wParam);
+      }
     }
 
     break;
@@ -306,14 +361,16 @@ void DrawBuffer(Buffer& buffer, Rect rect) {
 
   CursorPos cursor = GetCursorPos(buffer);
   CharBuffer buff = {};
+  v3 lineColorToUse = mode == Insert ? lineInsertColor : lineColor;
+  v3 cursorColorToUse = mode == Insert ? cursorInsertColor : cursorColor;
   for (i32 i = 0; i < size; i++) {
     if (text[i] == L'\n' || i == size - 1) {
       if (runningY > -fontHeight) {
 
         i32 isLineSelected = &buffer == selectedBuffer && currentLine == cursor.row;
         if (isLineSelected) {
-          PaintRect(rect.x, runningY, rect.width, fontHeight, lineColor);
-          SetColors(white, lineColor);
+          PaintRect(rect.x, runningY, rect.width, fontHeight, lineColorToUse);
+          SetColors(white, lineColorToUse);
         } else
           SetColors(lineNumberColor, bg);
 
@@ -324,7 +381,7 @@ void DrawBuffer(Buffer& buffer, Rect rect) {
         TextOutW(appState.dc, x + 40, round(runningY), buff.content, buff.len);
 
         if (isLineSelected)
-          SetColors(white, lineColor);
+          SetColors(white, lineColorToUse);
         else
           SetColors(fontColor, bg);
 
@@ -332,14 +389,15 @@ void DrawBuffer(Buffer& buffer, Rect rect) {
         TextOutW(appState.dc, x + 50, round(runningY), text + lineStart, i - lineStart + 1);
 
         if (isLineSelected) {
-          SetColors(cursorTextColor, cursorColor);
+          SetColors(cursorTextColor, cursorColorToUse);
           f32 cursorOffset =
               GetTextWidth(appState.dc, buffer.text, cursor.lineStart, buffer.cursor);
 
           SIZE size;
           GetTextExtentPoint32W(appState.dc, L"w", 1, &size);
           i32 charWidth = size.cx;
-          PaintRect(x + 50 + cursorOffset, round(runningY), charWidth, fontHeight, cursorColor);
+          PaintRect(x + 50 + cursorOffset, round(runningY), charWidth, fontHeight,
+                    cursorColorToUse);
           TextOutW(appState.dc, x + 50 + cursorOffset, round(runningY), text + buffer.cursor, 1);
         }
       }
