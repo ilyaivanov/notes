@@ -122,8 +122,16 @@ i32 FindLineEnd(Buffer& b, i32* lineIndex = 0) {
   return FindLineEndFrom(b, b.cursor, lineIndex);
 }
 
+i32 FindLineStartv2(Buffer& b, i32 from) {
+  for (i32 i = from - 1; i >= 0; i--) {
+    if (b.text[i] == '\n')
+      return i + 1;
+  }
+  return 0;
+}
+
 void UpdateDesiredOffset(Buffer& b, HDC dc) {
-  b.desiredOffset = GetTextWidth(dc, b.text, FindLineStart(b), b.cursor);
+  b.desiredOffset = GetTextWidth(dc, b.text, FindLineStartv2(b, b.cursor), b.cursor);
 }
 
 i32 ClampCursor(Buffer& b, i32 pos) {
@@ -173,11 +181,7 @@ void MoveDown(Buffer& b, HDC dc) {
 }
 
 void MoveUp(Buffer& b, HDC dc) {
-  i32 currentLineIndex = 0;
-  FindLineStart(b, &currentLineIndex);
-  i32 prevLineStart = 0;
-  if (currentLineIndex > 0)
-    prevLineStart = b.lines[currentLineIndex - 1].textPos;
+  i32 prevLineStart = FindLineStartv2(b, FindLineStartv2(b, b.cursor) - 1);
 
   b.cursor = ClampCursor(b, prevLineStart +
                                 FindLineOffsetByDistance(b, dc, prevLineStart, b.desiredOffset));
