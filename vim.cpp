@@ -42,6 +42,7 @@ struct Buffer {
   i32 desiredOffset;
 
   Spring offset;
+  bool isModified;
 };
 
 struct Range {
@@ -130,6 +131,14 @@ i32 FindLineStartv2(Buffer& b, i32 from) {
   return 0;
 }
 
+i32 FindLineEndv2(Buffer& b, i32 from) {
+  for (i32 i = from; i < b.textLen; i++) {
+    if (b.text[i] == '\n')
+      return i;
+  }
+  return 0;
+}
+
 void UpdateDesiredOffset(Buffer& b, HDC dc) {
   b.desiredOffset = GetTextWidth(dc, b.text, FindLineStartv2(b, b.cursor), b.cursor);
 }
@@ -176,8 +185,10 @@ void MoveDown(Buffer& b, HDC dc) {
       nextLineStart++;
   }
 
-  b.cursor = ClampCursor(b, nextLineStart +
-                                FindLineOffsetByDistance(b, dc, nextLineStart, b.desiredOffset));
+  i32 nextPos = ClampCursor(b, nextLineStart +
+                                   FindLineOffsetByDistance(b, dc, nextLineStart, b.desiredOffset));
+  if (nextPos != b.textLen - 1)
+    b.cursor = nextPos;
 }
 
 void MoveUp(Buffer& b, HDC dc) {

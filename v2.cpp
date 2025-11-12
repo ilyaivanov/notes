@@ -102,6 +102,17 @@ void InitBuffer(const c16* path, Buffer& buffer) {
   LoadFile((c16*)path, buffer);
 }
 
+void SaveCurrentBuffer() {
+  i32 utf8Count =
+      WideCharToMultiByte(CP_UTF8, 0, selectedBuffer->text, selectedBuffer->textLen, 0, 0, 0, 0);
+
+  c8* text = (c8*)valloc(utf8Count * sizeof(c8));
+  WideCharToMultiByte(CP_UTF8, 0, selectedBuffer->text, selectedBuffer->textLen, text, utf8Count, 0,
+                      0);
+  WriteMyFile(selectedBuffer->path, text, utf8Count);
+  selectedBuffer->isModified = false;
+}
+
 HFONT CreateAppFont(HDC dc, const wchar_t* name, i32 weight, i32 fontSize, DWORD quality) {
   int h = -MulDiv(fontSize, GetDeviceCaps(dc, LOGPIXELSY), USER_DEFAULT_SCREEN_DPI);
   HFONT font = CreateFontW(h, 0, 0, 0,
@@ -135,7 +146,7 @@ void Init() {
   InitBuffer(L"main.cpp", leftBuffer);
   InitBuffer(L"v2.cpp", middleBuffer);
   InitBuffer(L"notes.txt", rightBuffer);
-  selectedBuffer = &middleBuffer;
+  selectedBuffer = &rightBuffer;
 }
 
 f32 GetFontHeight() {
@@ -170,22 +181,36 @@ void HandleMovement(char ch) {
   }
 }
 
+void InsertCharAtCursor(char ch) {
+  InsertCharAt(GetSelectedBuffer(), selectedBuffer->cursor, ch);
+  selectedBuffer->cursor++;
+  UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+  selectedBuffer->isModified = true;
+}
+
+// this is used to prevent WM_CHAR event after WM_KEYDOWN. Should not be called inside WM_CHAR
 bool ignoreNextCharEvent;
+void EnterInsertMode() {
+  mode = Insert;
+  ignoreNextCharEvent = true;
+}
+
 LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
   switch (message) {
   case WM_CHAR:
     if (ignoreNextCharEvent)
       ignoreNextCharEvent = false;
     else if (mode == Insert) {
-      if (wParam >= ' ' && wParam <= '~') {
-        InsertCharAt(GetSelectedBuffer(), selectedBuffer->cursor, wParam);
-        selectedBuffer->cursor++;
-        UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
-      } else if (wParam == VK_BACK) {
+      if (wParam >= ' ' && wParam <= '~')
+        InsertCharAtCursor(wParam);
+      else if (wParam == '\r')
+        InsertCharAtCursor('\n');
+      else if (wParam == VK_BACK) {
         if (selectedBuffer->cursor > 0) {
           RemoveCharAt(GetSelectedBuffer(), selectedBuffer->cursor - 1);
           selectedBuffer->cursor--;
           UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+          selectedBuffer->isModified = true;
         }
       }
     } else if (mode == Normal) {
@@ -201,19 +226,38 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         mode = Normal;
       }
     } else if (mode == Normal) {
+      if (wParam == 'O' && IsKeyPressed(VK_SHIFT)) {
+        i32 target = 0;
+        target = FindLineStartv2(GetSelectedBuffer(), selectedBuffer->cursor);
+
+        InsertCharAt(GetSelectedBuffer(), target, '\n');
+        selectedBuffer->cursor = target;
+        EnterInsertMode();
+        UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+      } else if (wParam == 'O') {
+        i32 target = 0;
+        target = FindLineEndv2(GetSelectedBuffer(), selectedBuffer->cursor);
+
+        InsertCharAt(GetSelectedBuffer(), target + 1, '\n');
+        selectedBuffer->cursor = target + 1;
+        EnterInsertMode();
+        UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+      }
       if (wParam == 'X') {
         if (selectedBuffer->cursor < selectedBuffer->textLen - 1) {
           RemoveCharAt(GetSelectedBuffer(), selectedBuffer->cursor);
+          selectedBuffer->isModified = true;
         }
       }
       if (wParam == 'I') {
-        mode = Insert;
-        ignoreNextCharEvent = true;
+        EnterInsertMode();
       }
       if (wParam == 'Q') {
         PostQuitMessage(0);
         appState.isRunning = false;
       }
+      if (wParam == 'S' && IsKeyPressed(VK_CONTROL))
+        SaveCurrentBuffer();
       if (wParam == 'F') {
         appState.isFullscreen = !appState.isFullscreen;
         SetFullscreen(appState.window, appState.isFullscreen);
@@ -410,15 +454,21 @@ void DrawBuffer(Buffer& buffer, Rect rect) {
         break;
     }
   }
-  TextOutW(appState.dc, x, rect.y + rect.height - GetFontHeight() - padding, buffer.path,
-           wstrlen(buffer.path));
+
+  if (buffer.isModified)
+    SetColors(cursorInsertColor, bg);
+  else
+    SetColors(fontColor, bg);
+  SetTextAlign(appState.dc, TA_RIGHT);
+  TextOutW(appState.dc, rect.x + rect.width - padding,
+           rect.y + rect.height - GetFontHeight() - padding, buffer.path, wstrlen(buffer.path));
 }
 
 void DrawInfo() {
   f32 fontHeight = GetFontHeight();
   v2 padding = {10, 10};
   v2 size = {300, 300};
-  v2 topLeft = appState.size - padding - size;
+  v2 topLeft = appState.size - padding - size - vec2(0, appState.size.y / 2 - size.y / 2);
   v3 bg = {0.2, 0.1, 0.1};
   PaintRect(topLeft.x, topLeft.y, size.x, size.y, bg);
 
@@ -429,6 +479,7 @@ void DrawInfo() {
   Append(&buf, L"FPS: ");
   Append(&buf, (i32)(round(1000.0f / appState.lastFrameTimeMs)));
 
+  SetTextAlign(appState.dc, TA_LEFT);
   TextOutW(appState.dc, topLeft.x, topLeft.y, buf.content, buf.len);
   topLeft.y += fontHeight;
   buf.len = 0;
