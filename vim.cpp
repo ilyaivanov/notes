@@ -187,7 +187,7 @@ void MoveDown(Buffer& b, HDC dc) {
 
   i32 nextPos = ClampCursor(b, nextLineStart +
                                    FindLineOffsetByDistance(b, dc, nextLineStart, b.desiredOffset));
-  if (nextPos != b.textLen - 1)
+  if (nextPos != b.textLen - 1 || b.text[nextPos] == '\n')
     b.cursor = nextPos;
 }
 

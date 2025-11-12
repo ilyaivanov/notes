@@ -1,2 +1,9 @@
-First simple project: 
-  - Allow me to use nvim to edit text from clipboard. Zero dependencies and vim implementation from scratch. No CLI UI as well
+Replace Nvim with kickstart.init
+ - VisualLine mode
+ - Visual mode
+ - C D motions
+ - r R
+ - i I a A
+ - 0 $ 
+ - cib cab dib dab (consider creating a managable system for this)
+

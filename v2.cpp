@@ -28,9 +28,13 @@ v3 line = {0.1, 0.1, 0.1};
 v3 lineNumberColor = {0.3, 0.3, 0.3};
 v3 lineColor = {0.1, 0.1, 0.1};
 v3 lineInsertColor = {0.15, 0.1, 0.1};
+v3 lineVisualColor = {0.1, 0.1, 0.2};
 v3 cursorColor = {1, 220.0f / 255.0f, 50.0f / 255.0f};
 v3 cursorInsertColor = {1, 60.0f / 255.0f, 60.0f / 255.0f};
+v3 cursorVisualColor = {120.0f / 255.0f, 120.0f / 255.0f, 255.0f / 255.0f};
 v3 cursorTextColor = {0.05, 0.05, 0.05};
+v3 selectedBg = {0, 0, 1};
+v3 selectedText = {0.05, 0.05, 0.05};
 
 HBITMAP bitmap;
 BITMAPINFO bitmapInfo;
@@ -195,6 +199,15 @@ void EnterInsertMode() {
   ignoreNextCharEvent = true;
 }
 
+void RemoveCharFromLeft() {
+  if (selectedBuffer->cursor > 0) {
+    RemoveCharAt(GetSelectedBuffer(), selectedBuffer->cursor - 1);
+    selectedBuffer->cursor--;
+    UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
+    selectedBuffer->isModified = true;
+  }
+}
+
 LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
   switch (message) {
   case WM_CHAR:
@@ -205,14 +218,9 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         InsertCharAtCursor(wParam);
       else if (wParam == '\r')
         InsertCharAtCursor('\n');
-      else if (wParam == VK_BACK) {
-        if (selectedBuffer->cursor > 0) {
-          RemoveCharAt(GetSelectedBuffer(), selectedBuffer->cursor - 1);
-          selectedBuffer->cursor--;
-          UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
-          selectedBuffer->isModified = true;
-        }
-      }
+      else if (wParam == VK_BACK)
+        RemoveCharFromLeft();
+
     } else if (mode == Normal) {
       if (wParam == L'.')
         ResizeFont(fontSize + 1);
@@ -224,6 +232,38 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
     if (mode == Insert) {
       if (wParam == VK_ESCAPE) {
         mode = Normal;
+      }
+    }
+    if (mode == VisualLine) {
+      i32 selStart = Min(selectedBuffer->cursor, selectedBuffer->selectionStart);
+      i32 selEnd = Max(selectedBuffer->cursor, selectedBuffer->selectionStart);
+      i32 selStartLine = FindLineStartv2(GetSelectedBuffer(), selStart);
+      i32 selEndLine = FindLineEndv2(GetSelectedBuffer(), selEnd);
+
+      if (wParam == VK_ESCAPE) {
+        mode = Normal;
+      }
+
+      else if (wParam == 'D') {
+        RemoveChars(GetSelectedBuffer(), selStartLine, selEndLine - 1);
+        selectedBuffer->cursor = ClampCursor(GetSelectedBuffer(), selStartLine - 1);
+        mode = Normal;
+      }
+
+      if (wParam == 'C') {
+        RemoveChars(GetSelectedBuffer(), selStartLine, selEndLine - 2);
+        selectedBuffer->cursor = selStartLine;
+        EnterInsertMode();
+      }
+
+      // if (wParam == 'Y') {
+      //   ClipboardCopy(app.window, buffer.text + selStartLine, selEndLine - selStartLine);
+      //   mode = Normal;
+      // }
+      //
+
+      else {
+        HandleMovement(wParam);
       }
     } else if (mode == Normal) {
       if (wParam == 'O' && IsKeyPressed(VK_SHIFT)) {
@@ -243,6 +283,14 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         EnterInsertMode();
         UpdateDesiredOffset(GetSelectedBuffer(), appState.dc);
       }
+      if (wParam == 'V' && IsKeyPressed(VK_SHIFT)) {
+        selectedBuffer->selectionStart = selectedBuffer->cursor;
+        mode = VisualLine;
+      }
+
+      if (wParam == VK_BACK)
+        RemoveCharFromLeft();
+
       if (wParam == 'X') {
         if (selectedBuffer->cursor < selectedBuffer->textLen - 1) {
           RemoveCharAt(GetSelectedBuffer(), selectedBuffer->cursor);
@@ -405,11 +453,31 @@ void DrawBuffer(Buffer& buffer, Rect rect) {
 
   CursorPos cursor = GetCursorPos(buffer);
   CharBuffer buff = {};
-  v3 lineColorToUse = mode == Insert ? lineInsertColor : lineColor;
-  v3 cursorColorToUse = mode == Insert ? cursorInsertColor : cursorColor;
+
+  v3 lineColorToUse = lineColor;
+  if (mode == Insert)
+    lineColorToUse = lineInsertColor;
+  else if (mode == VisualLine)
+    lineColorToUse = lineVisualColor;
+
+  v3 cursorColorToUse = cursorColor;
+  if (mode == Insert)
+    cursorColorToUse = cursorInsertColor;
+  if (mode == VisualLine)
+    cursorColorToUse = cursorVisualColor;
+
+  i32 selStart = Min(buffer.cursor, buffer.selectionStart);
+  i32 selEnd = Max(buffer.cursor, buffer.selectionStart);
+  i32 selStartLine = FindLineStartv2(buffer, selStart);
+  i32 selEndLine = FindLineEndv2(buffer, selEnd);
+
+  i32 spaceForLineNumbers = 50;
+  i32 textToLineNumbersPadding = 10;
+
   for (i32 i = 0; i < size; i++) {
     if (text[i] == L'\n' || i == size - 1) {
       if (runningY > -fontHeight) {
+        i32 lineEnd = i;
 
         i32 isLineSelected = &buffer == selectedBuffer && currentLine == cursor.row;
         if (isLineSelected) {
@@ -422,15 +490,25 @@ void DrawBuffer(Buffer& buffer, Rect rect) {
         Append(&buff, currentLine + 1);
 
         SetTextAlign(appState.dc, TA_RIGHT);
-        TextOutW(appState.dc, x + 40, round(runningY), buff.content, buff.len);
+        TextOutW(appState.dc, x + (spaceForLineNumbers - textToLineNumbersPadding), round(runningY),
+                 buff.content, buff.len);
 
-        if (isLineSelected)
+        if (&buffer == selectedBuffer && mode == VisualLine) {
+          i32 isLineInRange = (selStartLine <= lineStart && lineStart < selEndLine) ||
+                              (selStartLine < lineEnd && lineEnd < selEndLine);
+
+          if (isLineInRange)
+            SetColors(white, selectedBg);
+          else
+            SetColors(fontColor, bg);
+        } else if (isLineSelected)
           SetColors(white, lineColorToUse);
         else
           SetColors(fontColor, bg);
 
         SetTextAlign(appState.dc, TA_LEFT);
-        TextOutW(appState.dc, x + 50, round(runningY), text + lineStart, i - lineStart + 1);
+        TextOutW(appState.dc, x + spaceForLineNumbers, round(runningY), text + lineStart,
+                 lineEnd - lineStart + 1);
 
         if (isLineSelected) {
           SetColors(cursorTextColor, cursorColorToUse);
@@ -440,9 +518,10 @@ void DrawBuffer(Buffer& buffer, Rect rect) {
           SIZE size;
           GetTextExtentPoint32W(appState.dc, L"w", 1, &size);
           i32 charWidth = size.cx;
-          PaintRect(x + 50 + cursorOffset, round(runningY), charWidth, fontHeight,
+          PaintRect(x + spaceForLineNumbers + cursorOffset, round(runningY), charWidth, fontHeight,
                     cursorColorToUse);
-          TextOutW(appState.dc, x + 50 + cursorOffset, round(runningY), text + buffer.cursor, 1);
+          TextOutW(appState.dc, x + spaceForLineNumbers + cursorOffset, round(runningY),
+                   text + buffer.cursor, 1);
         }
       }
 
