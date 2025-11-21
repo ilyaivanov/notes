@@ -26,7 +26,7 @@ v3 bg = {0.05, 0.05, 0.05};
 v3 red = {1, 0.2, 0.2};
 v3 line = {0.1, 0.1, 0.1};
 v3 lineNumberColor = {0.3, 0.3, 0.3};
-v3 lineColor = {0.1, 0.1, 0.1};
+v3 lineColor = {0.15, 0.15, 0.15};
 v3 lineInsertColor = {0.15, 0.1, 0.1};
 v3 lineVisualColor = {0.1, 0.1, 0.2};
 v3 cursorColor = {1, 220.0f / 255.0f, 50.0f / 255.0f};
@@ -223,6 +223,7 @@ void SetCursor(i32 pos) {
 
 void SetCursorKeepDesiredOffset(i32 pos) {
   selectedBuffer->cursor = pos;
+  ScrollIntoCursorIfNeeded();
 }
 
 void HandleMovement(char ch) {
@@ -356,6 +357,15 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
     } else if (mode == Normal) {
       if (wParam == 'R') {
         EnterReplaceCharMode();
+      } else if (wParam == 'G' && IsKeyPressed(VK_SHIFT)) {
+        Buffer& b = GetSelectedBuffer();
+        i32 at = FindLineStartv2(b, b.textLen - 1);
+        SetCursorKeepDesiredOffset(
+            at + FindLineOffsetByDistance(b, appState.dc, at, selectedBuffer->desiredOffset));
+      } else if (wParam == 'G') {
+        Buffer& b = GetSelectedBuffer();
+        SetCursorKeepDesiredOffset(
+            0 + FindLineOffsetByDistance(b, appState.dc, 0, selectedBuffer->desiredOffset));
       }
       if (wParam == 'O' && IsKeyPressed(VK_SHIFT)) {
         i32 target = 0;
