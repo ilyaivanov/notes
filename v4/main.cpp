@@ -79,37 +79,86 @@ HFONT CreateAppFont(HDC dc, const wchar_t* name, i32 weight, i32 fontSize, DWORD
 }
 
 void UpdateSelection(Item* item) {
-  if (item)
+  if (item) {
     selectedItem = item;
+    cursor.pos = 0;
+  }
 }
 
+bool ignoreNextCharEvent;
 void DrawApp();
 LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
   switch (message) {
+  case WM_CHAR:
+    if (ignoreNextCharEvent)
+      ignoreNextCharEvent = false;
+
+    else if (mode == Insert) {
+      if (wParam == VK_ESCAPE) {
+        mode = Normal;
+      } else if (wParam == VK_BACK) {
+        if (cursor.pos > 0) {
+          RemoveChars(selectedItem, cursor.pos - 1, cursor.pos - 1);
+          cursor.pos--;
+        }
+      } else {
+        InsertCharAt(selectedItem, cursor.pos, wParam);
+        cursor.pos++;
+      }
+    }
+    break;
   case WM_KEYDOWN:
-    if (wParam == 'Q') {
-      PostQuitMessage(0);
-      appState.isRunning = false;
-    }
-    if (wParam == 'L') {
-      cursor.pos = clamp(cursor.pos + 1, 0, selectedItem->textLen);
-    }
-    if (wParam == 'H') {
-      cursor.pos = clamp(cursor.pos - 1, 0, selectedItem->textLen);
-    }
-    if (wParam == 'J') {
-      UpdateSelection(GetItemBelow(selectedItem));
-    }
-    if (wParam == 'K') {
-      UpdateSelection(GetItemAbove(selectedItem));
-    }
-    if (wParam == 'F') {
-      if (selectedItem->childrenLen > 0)
-        selectedItem->isOpen = true;
-    }
-    if (wParam == 'A') {
-      if (selectedItem->childrenLen > 0)
-        selectedItem->isOpen = false;
+    if (mode == Normal) {
+      if (wParam == 'Q') {
+        PostQuitMessage(0);
+        appState.isRunning = false;
+      }
+      if (wParam == 'L') {
+        cursor.pos = clamp(cursor.pos + 1, 0, selectedItem->textLen);
+      }
+      if (wParam == 'I') {
+        mode = Insert;
+        ignoreNextCharEvent = true;
+      }
+      if (wParam == 'H') {
+        cursor.pos = clamp(cursor.pos - 1, 0, selectedItem->textLen);
+      }
+      if (wParam == 'J') {
+        UpdateSelection(GetItemBelow(selectedItem));
+      }
+      if (wParam == 'K') {
+        UpdateSelection(GetItemAbove(selectedItem));
+      }
+      if (wParam == 'D') {
+        UpdateSelection(NextSibling(selectedItem));
+      }
+      if (wParam == 'S') {
+        UpdateSelection(PrevSibling(selectedItem));
+      }
+      if (wParam == 'X') {
+        if (cursor.pos < selectedItem->textLen) {
+          RemoveChars(selectedItem, cursor.pos, cursor.pos);
+        }
+      }
+      if (wParam == VK_BACK) {
+        if (cursor.pos > 0) {
+          RemoveChars(selectedItem, cursor.pos - 1, cursor.pos - 1);
+          cursor.pos--;
+        }
+      }
+      if (wParam == 'F') {
+        if (!selectedItem->isOpen && selectedItem->childrenLen > 0)
+          selectedItem->isOpen = true;
+        else if (selectedItem->childrenLen > 0) {
+          selectedItem = selectedItem->children[0];
+        }
+      }
+      if (wParam == 'A') {
+        if (selectedItem->isOpen)
+          selectedItem->isOpen = false;
+        else if (!IsRoot(selectedItem->parent))
+          selectedItem = selectedItem->parent;
+      }
     }
     break;
   case WM_DESTROY:
@@ -194,9 +243,16 @@ f32 GetFontHeight() {
 }
 
 i32 GetTextWidth(HDC dc, char* text, i32 from, i32 to) {
-  SIZE s2;
-  GetTextExtentPoint32A(dc, text + from, to - from, &s2);
-  return s2.cx;
+  // if (IsKeyPressed(VK_SPACE)) {
+  RECT rc = {0, 0, 0, 0};
+
+  DrawTextA(dc, text + from, to - from, &rc, DT_SINGLELINE | DT_NOPREFIX | DT_CALCRECT);
+  return rc.right - rc.left;
+  // } else {
+  //   SIZE s2;
+  //   GetTextExtentPoint32A(dc, text + from, to - from, &s2);
+  //   return s2.cx;
+  // }
 }
 
 void UpdateFontSize() {
@@ -221,24 +277,35 @@ void PaintSplit(Item* root, Rect rect) {
     StackEntry entry = stack[--stackLen];
     bool isClosed = !entry.item->isOpen && entry.item->childrenLen > 0;
 
+    v3 lineColorToUse = lineColor;
+    v3 cursorColorToUse = cursorColor;
+    if (mode == Insert) {
+      lineColorToUse = lineInsertColor;
+      cursorColorToUse = cursorInsertColor;
+    }
+
     if (entry.level >= 0) {
       if (entry.item == selectedItem) {
-        PaintRect(rect.x, runningPos.y, rect.width, GetFontHeight(), lineColor);
-        SetColors(white, lineColor);
+        PaintRect(rect.x, runningPos.y, rect.width, GetFontHeight(), lineColorToUse);
+        SetColors(white, lineColorToUse);
       } else {
         SetColors(white, bg);
       }
 
       if (isClosed) {
-        PaintRect(rect.x, runningPos.y, 5, GetFontHeight(), red);
+        PaintRect(rect.x, runningPos.y, 4, GetFontHeight(), red);
       }
 
       f32 x = runningPos.x + entry.level * step;
-      TextOutA(appState.dc, x, runningPos.y, entry.item->text, entry.item->textLen);
+      char* text = entry.item->text;
+      i32 len = entry.item->textLen;
+      HDC dc = appState.dc;
+      RECT re = {(i32)x, (i32)runningPos.y, i32(rect.x + rect.width), i32(rect.y + rect.height)};
+      DrawTextA(dc, text, len, &re, DT_LEFT | DT_TOP);
 
       if (entry.item == selectedItem) {
         i32 cursorX = x + GetTextWidth(appState.dc, entry.item->text, 0, cursor.pos);
-        PaintRect(cursorX, runningPos.y, 1, GetFontHeight(), cursorColor);
+        PaintRect(cursorX, runningPos.y, 1, GetFontHeight(), cursorColorToUse);
       }
       runningPos.y += GetFontHeight();
     }
@@ -258,6 +325,7 @@ void Init() {
   FileContent file = ReadMyFileImp("sample.txt");
   root = ParseFileIntoRoot(file.content, file.size);
   selectedItem = root->children[0];
+  vfree(file.content);
 };
 
 void DrawApp() {
@@ -269,7 +337,7 @@ void DrawApp() {
 
   Rect left = {0, 0, appState.size.x / 3, appState.size.y};
   Rect middle = {left.x + left.width, left.y, left.width, left.height};
-  Rect right = {middle.x + middle.width, middle.y, middle.width, middle.height};
+  // Rect right = {middle.x + middle.width, middle.y, middle.width, middle.height};
 
   // PaintSplit(root, left);
   PaintSplit(root, middle);

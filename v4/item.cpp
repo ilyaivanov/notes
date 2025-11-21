@@ -42,10 +42,39 @@ void AppendChild(Item* parent, Item* child) {
 
 Item* CreateItem(Item* parent, const char* text, int len) {
   Item* res = (Item*)valloc(sizeof(Item));
-  res->text = (char*)text;
+  res->textCapacity = len + 10;
   res->textLen = len;
+  res->text = (char*)valloc(res->textCapacity * sizeof(char));
+  memcpy(res->text, text, len);
   AppendChild(parent, res);
   return res;
+}
+
+void RemoveChars(Item* item, i32 from, i32 to) {
+  char* text = item->text;
+  i32 len = item->textLen;
+  for (i32 i = to; i < len - 1; i++) {
+    text[i + from - to] = text[i + 1];
+  }
+  item->textLen -= to - from + 1;
+}
+
+void InsertCharAt(Item* item, i32 at, c8 ch) {
+  if (item->textLen == item->textCapacity) {
+    item->textCapacity *= 2;
+    char* newStr = (char*)valloc(item->textCapacity * sizeof(char));
+    memcpy(newStr, item->text, item->textLen);
+    vfree(item->text);
+    item->text = newStr;
+  }
+
+  char* text = item->text;
+  i32 len = item->textLen;
+  for (i32 i = len; i > at; i--) {
+    text[i] = text[i - 1];
+  }
+  text[at] = ch;
+  item->textLen++;
 }
 
 i32 IndexOf(Item* parent, Item* item) {
@@ -99,6 +128,22 @@ Item* GetItemAbove(Item* item) {
   }
 
   return prev;
+}
+
+Item* NextSibling(Item* item) {
+  Item* parent = item->parent;
+  i32 index = IndexOf(parent, item);
+  if (index < parent->childrenLen)
+    return parent->children[index + 1];
+  return nullptr;
+}
+
+Item* PrevSibling(Item* item) {
+  Item* parent = item->parent;
+  i32 index = IndexOf(parent, item);
+  if (index > 0)
+    return parent->children[index - 1];
+  return nullptr;
 }
 
 struct StackEntry {
