@@ -123,6 +123,23 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       if (wParam == 'H') {
         cursor.pos = clamp(cursor.pos - 1, 0, selectedItem->textLen);
       }
+      if (wParam == 'O') {
+        Item* newItem = CreateEmptyItem(8);
+
+        i32 index = IndexOf(selectedItem->parent, selectedItem);
+        i32 pos = index + 1;
+        if (IsKeyPressed(VK_SHIFT))
+          pos = index;
+
+        InsertChildAt(selectedItem->parent, newItem, pos);
+        selectedItem = newItem;
+        cursor.pos = 0;
+        mode = Insert;
+        ignoreNextCharEvent = true;
+      }
+      if (wParam == 'H') {
+        cursor.pos = clamp(cursor.pos - 1, 0, selectedItem->textLen);
+      }
       if (wParam == 'J') {
         UpdateSelection(GetItemBelow(selectedItem));
       }

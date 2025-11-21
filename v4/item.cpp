@@ -19,7 +19,7 @@ Item* CreateRoot() {
   return res;
 }
 
-void AppendChild(Item* parent, Item* child) {
+void CheckCapacityBeforeInsert(Item* parent) {
   size_t ps = sizeof(parent->children[0]);
 
   if (parent->childrenCapacity == 0) {
@@ -35,16 +35,39 @@ void AppendChild(Item* parent, Item* child) {
     vfree(parent->children);
     parent->children = newChildren;
   }
+}
+void AppendChild(Item* parent, Item* child) {
+  CheckCapacityBeforeInsert(parent);
 
   parent->children[parent->childrenLen++] = child;
   child->parent = parent;
 }
 
-Item* CreateItem(Item* parent, const char* text, int len) {
+void InsertChildAt(Item* parent, Item* child, i32 at) {
+  CheckCapacityBeforeInsert(parent);
+
+  Item** children = parent->children;
+  i32 len = parent->childrenLen;
+  for (i32 i = len; i > at; i--) {
+    children[i] = children[i - 1];
+  }
+
+  children[at] = child;
+  child->parent = parent;
+  parent->childrenLen++;
+}
+
+Item* CreateEmptyItem(i32 capacity) {
   Item* res = (Item*)valloc(sizeof(Item));
-  res->textCapacity = len + 10;
-  res->textLen = len;
+  res->textCapacity = capacity;
+  res->textLen = 0;
   res->text = (char*)valloc(res->textCapacity * sizeof(char));
+  return res;
+}
+
+Item* CreateItem(Item* parent, const char* text, int len) {
+  Item* res = CreateEmptyItem(len + 10);
+  res->textLen = len;
   memcpy(res->text, text, len);
   AppendChild(parent, res);
   return res;
