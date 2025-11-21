@@ -1,15 +1,15 @@
 #define UNICODE
 #define WIN32_LEAN_AND_MEAN
 
-// #define FULLSCREEN
+#define FULLSCREEN
 
 #include "../win32.cpp"
 #include "item.cpp"
 // #include "anim.cpp"
 // #include "vim.cpp"
 
-// enum Mode { Normal, Insert, ReplaceChar, VisualLine, Visual, Modal };
-// Mode mode = Normal;
+enum Mode { Normal, Insert, ReplaceChar, VisualLine, Visual, Modal };
+Mode mode = Normal;
 
 HWND win;
 AppState appState;
@@ -25,7 +25,7 @@ v3 white = {1, 1, 1};
 v3 black = {0, 0, 0};
 v3 grey = {0.05, 0.05, 0.05};
 v3 bg = {0.05, 0.05, 0.05};
-v3 red = {1, 0.2, 0.2};
+v3 red = {0.5, 0.2, 0.2};
 v3 line = {0.1, 0.1, 0.1};
 v3 lineNumberColor = {0.3, 0.3, 0.3};
 v3 lineColor = {0.15, 0.15, 0.15};
@@ -38,9 +38,20 @@ v3 cursorTextColor = {0.05, 0.05, 0.05};
 v3 selectedBg = {0, 0, 1};
 v3 selectedText = {0.05, 0.05, 0.05};
 
+v2 padding = {20, 5};
+
 HBITMAP bitmap;
 BITMAPINFO bitmapInfo;
 MyBitmap canvas;
+
+struct Cursor {
+  i32 pos;
+  f32 desiredOffset;
+};
+Cursor cursor;
+
+Item* root;
+Item* selectedItem;
 
 void PaintWindow() {
   StretchDIBits(windowDc, 0, 0, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height,
@@ -67,6 +78,11 @@ HFONT CreateAppFont(HDC dc, const wchar_t* name, i32 weight, i32 fontSize, DWORD
   return font;
 }
 
+void UpdateSelection(Item* item) {
+  if (item)
+    selectedItem = item;
+}
+
 void DrawApp();
 LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
   switch (message) {
@@ -74,6 +90,26 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
     if (wParam == 'Q') {
       PostQuitMessage(0);
       appState.isRunning = false;
+    }
+    if (wParam == 'L') {
+      cursor.pos = clamp(cursor.pos + 1, 0, selectedItem->textLen);
+    }
+    if (wParam == 'H') {
+      cursor.pos = clamp(cursor.pos - 1, 0, selectedItem->textLen);
+    }
+    if (wParam == 'J') {
+      UpdateSelection(GetItemBelow(selectedItem));
+    }
+    if (wParam == 'K') {
+      UpdateSelection(GetItemAbove(selectedItem));
+    }
+    if (wParam == 'F') {
+      if (selectedItem->childrenLen > 0)
+        selectedItem->isOpen = true;
+    }
+    if (wParam == 'A') {
+      if (selectedItem->childrenLen > 0)
+        selectedItem->isOpen = false;
     }
     break;
   case WM_DESTROY:
@@ -157,6 +193,12 @@ f32 GetFontHeight() {
   return textMetric.tmAscent + textMetric.tmDescent;
 }
 
+i32 GetTextWidth(HDC dc, char* text, i32 from, i32 to) {
+  SIZE s2;
+  GetTextExtentPoint32A(dc, text + from, to - from, &s2);
+  return s2.cx;
+}
+
 void UpdateFontSize() {
   if (font)
     DeleteFont(font);
@@ -166,10 +208,7 @@ void UpdateFontSize() {
   // ANTIALIASED_QUALITY);
 }
 
-v2 padding = {10, 5};
-
 void PaintSplit(Item* root, Rect rect) {
-  SetColors(white, bg);
   v2 runningPos = vec2(rect.x, rect.y) + padding;
 
   StackEntry stack[200];
@@ -180,38 +219,52 @@ void PaintSplit(Item* root, Rect rect) {
 
   while (stackLen > 0) {
     StackEntry entry = stack[--stackLen];
+    bool isClosed = !entry.item->isOpen && entry.item->childrenLen > 0;
 
     if (entry.level >= 0) {
-      TextOutA(appState.dc, runningPos.x + entry.level * step, runningPos.y, entry.item->text,
-               entry.item->textLen);
+      if (entry.item == selectedItem) {
+        PaintRect(rect.x, runningPos.y, rect.width, GetFontHeight(), lineColor);
+        SetColors(white, lineColor);
+      } else {
+        SetColors(white, bg);
+      }
 
+      if (isClosed) {
+        PaintRect(rect.x, runningPos.y, 5, GetFontHeight(), red);
+      }
+
+      f32 x = runningPos.x + entry.level * step;
+      TextOutA(appState.dc, x, runningPos.y, entry.item->text, entry.item->textLen);
+
+      if (entry.item == selectedItem) {
+        i32 cursorX = x + GetTextWidth(appState.dc, entry.item->text, 0, cursor.pos);
+        PaintRect(cursorX, runningPos.y, 1, GetFontHeight(), cursorColor);
+      }
       runningPos.y += GetFontHeight();
     }
 
-    for (i32 i = entry.item->childrenLen - 1; i >= 0; i--) {
-      stack[stackLen++] = {entry.item->children[i], entry.level + 1};
+    if (!isClosed) {
+      for (i32 i = entry.item->childrenLen - 1; i >= 0; i--) {
+        stack[stackLen++] = {entry.item->children[i], entry.level + 1};
+      }
     }
   }
 }
-
-Item* root;
 
 void Init() {
   fontSize = initialFontSize;
   UpdateFontSize();
 
-  FileContent file = ReadMyFileImp("links.txt");
+  FileContent file = ReadMyFileImp("sample.txt");
   root = ParseFileIntoRoot(file.content, file.size);
-  // CreateItem(root, "foo");
-  // CreateItem(root->children[0], "nested foo");
-  // CreateItem(root->children[0], "nested foo 2");
-  // CreateItem(root, "bar");
-  // CreateItem(root, "buzz");
+  selectedItem = root->children[0];
 };
 
 void DrawApp() {
   memset(canvas.pixels, round(bg.x * 255.0f), canvas.width * canvas.height * 4);
+
   SelectFont(appState.dc, font);
+
   SelectBitmap(drawingDc, bitmap);
 
   Rect left = {0, 0, appState.size.x / 3, appState.size.y};
@@ -261,6 +314,7 @@ extern "C" void WinMainCRTStartup() {
     }
     DrawApp();
 
+    // Sleep(10);
     i64 frameEnd = GetPerfCounter();
     appState.lastFrameTimeMs = (f32)(frameEnd - frameStart) / (f32)freq * 1000.0f;
     frameStart = frameEnd;

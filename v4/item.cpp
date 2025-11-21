@@ -11,6 +11,7 @@ struct Item {
   int childrenCapacity;
 
   Item* parent;
+  bool isOpen;
 };
 
 Item* CreateRoot() {
@@ -24,6 +25,7 @@ void AppendChild(Item* parent, Item* child) {
   if (parent->childrenCapacity == 0) {
     parent->childrenCapacity = 10;
     parent->children = (Item**)valloc(ps * parent->childrenCapacity);
+    parent->isOpen = true;
   }
 
   if (parent->childrenLen == parent->childrenCapacity) {
@@ -46,6 +48,59 @@ Item* CreateItem(Item* parent, const char* text, int len) {
   return res;
 }
 
+i32 IndexOf(Item* parent, Item* item) {
+  for (i32 i = 0; i < parent->childrenLen; i++)
+    if (parent->children[i] == item)
+      return i;
+
+  return -1;
+}
+
+bool IsRoot(Item* item) {
+  return item->parent == nullptr;
+}
+
+bool IsLast(Item* item) {
+  if (!item->parent)
+    return true;
+  i32 index = IndexOf(item->parent, item);
+  return item->parent->childrenLen == index + 1;
+}
+
+Item* GetItemBelow(Item* item) {
+  if (item->isOpen)
+    return item->children[0];
+
+  Item* parent = item;
+  while (parent && IsLast(parent)) {
+    parent = parent->parent;
+  }
+
+  if (parent) {
+    i32 index = IndexOf(parent->parent, parent);
+    if (index < parent->parent->childrenLen - 1)
+      return parent->parent->children[index + 1];
+  }
+
+  return nullptr;
+}
+
+Item* GetItemAbove(Item* item) {
+  Item* parent = item->parent;
+  i32 index = IndexOf(parent, item);
+  if (index == 0 && !IsRoot(parent))
+    return parent;
+  else if (index == 0 && IsRoot(parent))
+    return nullptr;
+
+  Item* prev = parent->children[index - 1];
+  while (prev->isOpen) {
+    prev = prev->children[prev->childrenLen - 1];
+  }
+
+  return prev;
+}
+
 struct StackEntry {
   Item* item;
   int level;
@@ -62,7 +117,7 @@ Item* ParseFileIntoRoot(char* file, int fileLen) {
   i32 lineStart = 0;
   i32 i = 0;
   for (; i < fileLen; i++) {
-    if (file[i] == '\n') {
+    if (file[i] == '\n' || file[i] == '\r' || i == fileLen - 1) {
       int level = 0;
       while (file[lineStart + level] == ' ')
         level++;
@@ -70,14 +125,17 @@ Item* ParseFileIntoRoot(char* file, int fileLen) {
       while (stack[stackLen - 1].level >= level)
         stackLen--;
 
-      Item* res = CreateItem(stack[stackLen - 1].item, file + lineStart + level, i - lineStart);
+      i32 textStart = lineStart + level;
+      Item* res = CreateItem(stack[stackLen - 1].item, file + textStart, i - textStart);
 
       stack[stackLen++] = {res, level};
 
-      lineStart = i + 1;
+      while (file[i] == '\n' || file[i] == '\r')
+        i++;
+
+      lineStart = i;
     }
   }
-  CreateItem(root, file + lineStart, i - lineStart);
 
   return root;
 }
