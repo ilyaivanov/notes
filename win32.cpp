@@ -25,6 +25,11 @@ typedef uint64_t u64;
 typedef float f32;
 typedef double f64;
 
+void fail() {
+  int* a = 0;
+  *a = 1;
+}
+
 struct v2 {
   f32 x;
   f32 y;
@@ -239,7 +244,6 @@ void SetFullscreen(HWND window, i32 isFullscreen) {
   }
 }
 
-#ifdef USE_OPENGL
 void Win32InitOpenGL(HDC dc) {
   PIXELFORMATDESCRIPTOR DesiredPixelFormat = {};
   DesiredPixelFormat.nSize = sizeof(DesiredPixelFormat);
@@ -251,6 +255,7 @@ void Win32InitOpenGL(HDC dc) {
   DesiredPixelFormat.iLayerType = PFD_MAIN_PLANE;
 
   int SuggestedPixelFormatIndex = ChoosePixelFormat(dc, &DesiredPixelFormat);
+
   PIXELFORMATDESCRIPTOR SuggestedPixelFormat;
   DescribePixelFormat(dc, SuggestedPixelFormatIndex, sizeof(SuggestedPixelFormat),
                       &SuggestedPixelFormat);
@@ -259,7 +264,10 @@ void Win32InitOpenGL(HDC dc) {
   HGLRC OpenGLRC = wglCreateContext(dc);
   wglMakeCurrent(dc, OpenGLRC);
 }
-#endif
+
+typedef BOOL PFNWGLCHOOSEPIXELFORMATARBPROC(HDC hdc, const int* piAttribIList,
+                                            const FLOAT* pfAttribFList, UINT nMaxFormats,
+                                            int* piFormats, UINT* nNumFormats);
 
 inline BOOL IsKeyPressed(u32 code) {
   return (GetKeyState(code) >> 15) & 1;
