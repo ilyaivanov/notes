@@ -1,2 +1,38 @@
-yes
-no
+Note system
+  Done /c
+    <C-=> and <C--> to increase and decrease font size
+    I A
+    a s - close\open item
+  w b W B
+  <C-w> in insert mode
+  Enter breaks item into two
+  Desired offset
+  Text wrap
+  Scroll of the items
+  Undo\redo
+  Visual Line mode
+  Search
+  Unicode (UTF-16 support)
+  Visual mode
+  Typography 
+    Font size and weight for specific items
+  Focusing on an item
+Bugs
+  a s doesn't update cursor position
+Things to think about
+  Multiple cursors
+  Two hand navigation /c
+    right hand makes regular hjkl motions
+    left hand makes structural motions (go to parent, sibling, etc)
+  Cursor history
+Logs
+  21.11.25 /c
+    Started the notes project
+    Tree view for the notes
+    Parse file into a tree structure
+    Insert chars into items 
+    Insert mode
+  22.11.25
+    Serialize items into a file with /c flag at end for closed items
+    Moving items hjkl
+    Delete items (need to check for memory leak)
