@@ -3,20 +3,32 @@ Note system
     <C-=> and <C--> to increase and decrease font size
     I A
     a s - close\open item
+    item movement in insert mode
+    Enter breaks item into two /c
+      Mode remains the same
+    Desired offset
+    <C-w> in insert mode
   w b W B
-  <C-w> in insert mode
-  Enter breaks item into two
-  Desired offset
   Text wrap
   Scroll of the items
   Undo\redo
   Visual Line mode
+  Working with clipboard (copy\paste) /c
+    Clipboard history
+    Clipboard for items (treat \n as new item)
   Search
   Unicode (UTF-16 support)
   Visual mode
-  Typography 
+  Typography  /c
     Font size and weight for specific items
   Focusing on an item
+  Show if file is saved /c
+    Consider saving a file during exit
+  Different views for the items /c
+    	Tree (default)
+    Board
+    Gallery
+    Miller list
 Bugs
   a s doesn't update cursor position
 Things to think about
@@ -25,6 +37,7 @@ Things to think about
     right hand makes regular hjkl motions
     left hand makes structural motions (go to parent, sibling, etc)
   Cursor history
+  Complex motions like dw ci etc
 Logs
   21.11.25 /c
     Started the notes project
