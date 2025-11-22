@@ -101,12 +101,21 @@ void InsertCharAt(Item* item, i32 at, c8 ch) {
   item->textLen++;
 }
 
-i32 IndexOf(Item* parent, Item* item) {
-  for (i32 i = 0; i < parent->childrenLen; i++)
-    if (parent->children[i] == item)
+i32 IndexOf(Item* item) {
+  for (i32 i = 0; i < item->parent->childrenLen; i++)
+    if (item->parent->children[i] == item)
       return i;
 
   return -1;
+}
+
+void RemoveChildAt(Item* item, i32 at) {
+  for (i32 i = at; i < item->childrenLen - 1; i++) {
+    item->children[i] = item->children[i + 1];
+  }
+  item->childrenLen--;
+  if (item->childrenLen == 0)
+    item->isOpen = Closed;
 }
 
 bool IsRoot(Item* item) {
@@ -116,7 +125,7 @@ bool IsRoot(Item* item) {
 bool IsLast(Item* item) {
   if (!item->parent)
     return true;
-  i32 index = IndexOf(item->parent, item);
+  i32 index = IndexOf(item);
   return item->parent->childrenLen == index + 1;
 }
 
@@ -130,7 +139,7 @@ Item* GetItemBelow(Item* item) {
   }
 
   if (parent) {
-    i32 index = IndexOf(parent->parent, parent);
+    i32 index = IndexOf(parent);
     if (index < parent->parent->childrenLen - 1)
       return parent->parent->children[index + 1];
   }
@@ -140,7 +149,7 @@ Item* GetItemBelow(Item* item) {
 
 Item* GetItemAbove(Item* item) {
   Item* parent = item->parent;
-  i32 index = IndexOf(parent, item);
+  i32 index = IndexOf(item);
   if (index == 0 && !IsRoot(parent))
     return parent;
   else if (index == 0 && IsRoot(parent))
@@ -156,7 +165,7 @@ Item* GetItemAbove(Item* item) {
 
 Item* NextSibling(Item* item) {
   Item* parent = item->parent;
-  i32 index = IndexOf(parent, item);
+  i32 index = IndexOf(item);
   if (index < parent->childrenLen)
     return parent->children[index + 1];
   return nullptr;
@@ -164,10 +173,50 @@ Item* NextSibling(Item* item) {
 
 Item* PrevSibling(Item* item) {
   Item* parent = item->parent;
-  i32 index = IndexOf(parent, item);
+  i32 index = IndexOf(item);
   if (index > 0)
     return parent->children[index - 1];
   return nullptr;
+}
+
+void MoveItemRight(Item* item) {
+  Item* parent = item->parent;
+  i32 index = IndexOf(item);
+  if (index != 0) {
+    RemoveChildAt(parent, index);
+    Item* newParent = parent->children[index - 1];
+    AppendChild(newParent, item);
+    newParent->isOpen = Open;
+  }
+}
+
+void MoveItemLeft(Item* item) {
+  Item* parent = item->parent;
+  i32 index = IndexOf(item);
+  if (!IsRoot(parent)) {
+    int index = IndexOf(parent);
+    RemoveChildAt(parent, IndexOf(item));
+    Item* newParent = parent->parent;
+    InsertChildAt(newParent, item, index + 1);
+  }
+}
+
+void MoveItemDown(Item* item) {
+  Item* parent = item->parent;
+  i32 index = IndexOf(item);
+  if (index < parent->childrenLen - 1) {
+    RemoveChildAt(parent, IndexOf(item));
+    InsertChildAt(parent, item, index + 1);
+  }
+}
+
+void MoveItemUp(Item* item) {
+  Item* parent = item->parent;
+  i32 index = IndexOf(item);
+  if (index > 0) {
+    RemoveChildAt(parent, IndexOf(item));
+    InsertChildAt(parent, item, index - 1);
+  }
 }
 
 struct StackEntry {

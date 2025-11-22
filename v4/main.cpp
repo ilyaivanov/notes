@@ -125,7 +125,9 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         PostQuitMessage(0);
         appState.isRunning = false;
       }
-      if (wParam == 'L') {
+      if (wParam == 'L' && IsKeyPressed(VK_MENU)) {
+        MoveItemRight(selectedItem);
+      } else if (wParam == 'L') {
         cursor.pos = clamp(cursor.pos + 1, 0, selectedItem->textLen);
       }
       if (wParam == 'I') {
@@ -135,7 +137,7 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       if (wParam == 'O') {
         Item* newItem = CreateEmptyItem(8);
 
-        i32 index = IndexOf(selectedItem->parent, selectedItem);
+        i32 index = IndexOf(selectedItem);
         i32 pos = index + 1;
         if (IsKeyPressed(VK_SHIFT))
           pos = index;
@@ -146,13 +148,19 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         mode = Insert;
         ignoreNextCharEvent = true;
       }
-      if (wParam == 'H') {
+      if (wParam == 'H' && IsKeyPressed(VK_MENU)) {
+        MoveItemLeft(selectedItem);
+      } else if (wParam == 'H') {
         cursor.pos = clamp(cursor.pos - 1, 0, selectedItem->textLen);
       }
-      if (wParam == 'J') {
+      if (wParam == 'J' && IsKeyPressed(VK_MENU)) {
+        MoveItemDown(selectedItem);
+      } else if (wParam == 'J') {
         UpdateSelection(GetItemBelow(selectedItem));
       }
-      if (wParam == 'K') {
+      if (wParam == 'K' && IsKeyPressed(VK_MENU)) {
+        MoveItemUp(selectedItem);
+      } else if (wParam == 'K') {
         UpdateSelection(GetItemAbove(selectedItem));
       }
       if (wParam == 'D') {
