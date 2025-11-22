@@ -8,7 +8,7 @@
 // #include "anim.cpp"
 // #include "vim.cpp"
 
-#define filePath L"foo.txt"
+#define filePath L"sample.txt"
 #define EMPTY_ITEM_TEXT_CAPACITY 8
 i32 step = 20;
 
@@ -236,11 +236,7 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         UpdateSelection(itemToSelect);
         FindPositionBasedOnDesiredOffset();
       }
-      if (wParam == 'L' && IsKeyPressed(VK_MENU)) {
-        MoveItemRight(selectedItem);
-      } else if (wParam == 'L') {
-        UpdateCursorPosWithDesiredOffset(cursor.pos + 1);
-      }
+
       if (wParam == VK_OEM_PLUS && IsKeyPressed(VK_CONTROL)) {
         fontSize++;
         UpdateFontSize();
@@ -275,31 +271,47 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         UpdateCursorPosWithDesiredOffset(0);
         EnterInsertMode();
       }
-      if (wParam == 'H' && IsKeyPressed(VK_MENU)) {
+
+      if (wParam == 'L' && IsKeyPressed(VK_CONTROL)) {
+        if (selectedItem->childrenLen > 0) {
+
+          selectedItem->isOpen = Open;
+          UpdateSelection(selectedItem->children[0]);
+        }
+      } else if (wParam == 'L' && IsKeyPressed(VK_MENU)) {
+        MoveItemRight(selectedItem);
+      } else if (wParam == 'L') {
+        UpdateCursorPosWithDesiredOffset(cursor.pos + 1);
+      }
+
+      if (wParam == 'H' && IsKeyPressed(VK_CONTROL)) {
+        if (!IsRoot(selectedItem->parent))
+          UpdateSelection(selectedItem->parent);
+
+      } else if (wParam == 'H' && IsKeyPressed(VK_MENU)) {
         MoveItemLeft(selectedItem);
       } else if (wParam == 'H') {
         UpdateCursorPosWithDesiredOffset(cursor.pos - 1);
       }
-      if (wParam == 'J' && IsKeyPressed(VK_MENU)) {
+
+      if (wParam == 'J' && IsKeyPressed(VK_CONTROL)) {
+        UpdateSelection(NextSibling(selectedItem));
+      } else if (wParam == 'J' && IsKeyPressed(VK_MENU)) {
         MoveItemDown(selectedItem);
       } else if (wParam == 'J') {
         UpdateSelection(GetItemBelow(selectedItem));
         FindPositionBasedOnDesiredOffset();
       }
-      if (wParam == 'K' && IsKeyPressed(VK_MENU)) {
+
+      if (wParam == 'K' && IsKeyPressed(VK_CONTROL))
+        UpdateSelection(PrevSibling(selectedItem));
+      else if (wParam == 'K' && IsKeyPressed(VK_MENU)) {
         MoveItemUp(selectedItem);
       } else if (wParam == 'K') {
         UpdateSelection(GetItemAbove(selectedItem));
         FindPositionBasedOnDesiredOffset();
       }
-      if (wParam == 'S' && IsKeyPressed(VK_CONTROL)) {
-        i32 capacity = MB(2);
-        void* buffer = valloc(capacity);
-        i32 bytesWritten;
-        SerializeRoot(root, buffer, &bytesWritten, capacity);
-        WriteMyFile(filePath, (char*)buffer, bytesWritten);
-        vfree(buffer);
-      }
+
       if (wParam == 'X') {
         if (cursor.pos < selectedItem->textLen) {
           RemoveChars(selectedItem, cursor.pos, cursor.pos);
@@ -311,7 +323,14 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
           UpdateCursorPosWithDesiredOffset(cursor.pos - 1);
         }
       }
-      if (wParam == 'S') {
+      if (wParam == 'S' && IsKeyPressed(VK_CONTROL)) {
+        i32 capacity = MB(2);
+        void* buffer = valloc(capacity);
+        i32 bytesWritten;
+        SerializeRoot(root, buffer, &bytesWritten, capacity);
+        WriteMyFile(filePath, (char*)buffer, bytesWritten);
+        vfree(buffer);
+      } else if (wParam == 'S') {
         if (!selectedItem->isOpen && selectedItem->childrenLen > 0)
           selectedItem->isOpen = Open;
         else if (selectedItem->childrenLen > 0) {

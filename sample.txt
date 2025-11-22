@@ -29,9 +29,9 @@ Note system
     Board
     Gallery
     Miller list
-Bugs
+Bugs /c
   a s doesn't update cursor position
-Things to think about
+Things to think about /c
   Multiple cursors
   Two hand navigation /c
     right hand makes regular hjkl motions
