@@ -124,9 +124,28 @@ void HandleMovement(UINT wParam) {
     MoveItemRight(selectedItem);
 }
 
+u32 IsAlphaNumeric(c16 ch) {
+  return (ch >= L'0' && ch <= L'9') || (ch >= L'a' && ch <= L'z') || (ch >= L'A' && ch <= L'Z');
+}
+
 void UpdateCursorPosWithDesiredOffset(i32 pos) {
   cursor.pos = clamp(pos, 0, selectedItem->textLen);
   cursor.desiredOffset = GetItemLevel(selectedItem) * step + SelectedItemTextWidth(cursor.pos);
+}
+
+void RemoveWord() {
+  i32 to = cursor.pos - 1;
+  i32 from = cursor.pos - 1;
+  char* text = selectedItem->text;
+  while (from >= 0 && text[from] == ' ')
+    from--;
+
+  while (from >= 0 && IsAlphaNumeric(text[from]))
+    from--;
+
+  from++;
+  RemoveChars(selectedItem, from, to);
+  UpdateCursorPosWithDesiredOffset(from);
 }
 
 void HandleEnter() {
@@ -192,6 +211,11 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
   case WM_KEYDOWN:
     if (mode == Insert) {
       HandleMovement(wParam);
+
+      if (wParam == 'W' && IsKeyPressed(VK_CONTROL)) {
+        ignoreNextCharEvent = true;
+        RemoveWord();
+      }
     }
     if (mode == Normal) {
 
