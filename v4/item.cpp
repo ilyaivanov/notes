@@ -1,6 +1,7 @@
 #pragma once
 #include "../win32.cpp"
 
+enum IsOpen { Open = 1, Closed = 0, ClosedInFile = -1 };
 struct Item {
   char* text;
   int textLen;
@@ -11,11 +12,12 @@ struct Item {
   int childrenCapacity;
 
   Item* parent;
-  bool isOpen;
+  IsOpen isOpen;
 };
 
 Item* CreateRoot() {
   Item* res = (Item*)valloc(sizeof(Item));
+  res->isOpen = Open;
   return res;
 }
 
@@ -25,7 +27,6 @@ void CheckCapacityBeforeInsert(Item* parent) {
   if (parent->childrenCapacity == 0) {
     parent->childrenCapacity = 10;
     parent->children = (Item**)valloc(ps * parent->childrenCapacity);
-    parent->isOpen = true;
   }
 
   if (parent->childrenLen == parent->childrenCapacity) {
@@ -174,6 +175,15 @@ struct StackEntry {
   int level;
 };
 
+#define isNewLine(val) (val == '\n' || val == '\r')
+
+void CheckForFileFlags(Item* item) {
+  if (item->isOpen == ClosedInFile)
+    item->isOpen = Closed;
+  else if (item->childrenLen > 0)
+    item->isOpen = Open;
+}
+
 Item* ParseFileIntoRoot(char* file, int fileLen) {
   Item* root = CreateRoot();
 
@@ -183,27 +193,83 @@ Item* ParseFileIntoRoot(char* file, int fileLen) {
   stack[stackLen++] = {root, -1};
 
   i32 lineStart = 0;
-  i32 i = 0;
-  for (; i < fileLen; i++) {
-    if (file[i] == '\n' || file[i] == '\r' || i == fileLen - 1) {
+  for (i32 i = 0; i < fileLen; i++) {
+    if (isNewLine(file[i]) || i == fileLen - 1) {
       int level = 0;
       while (file[lineStart + level] == ' ')
         level++;
 
-      while (stack[stackLen - 1].level >= level)
+      while (stack[stackLen - 1].level >= level) {
+        CheckForFileFlags(stack[stackLen - 1].item);
+
         stackLen--;
+      }
 
       i32 textStart = lineStart + level;
-      Item* res = CreateItem(stack[stackLen - 1].item, file + textStart, i - textStart);
+      i32 textEnd = i;
+
+      bool isClosed = EndsWith(file + textStart, textEnd - textStart, (char*)" /c");
+      if (isClosed) {
+        textEnd -= 3;
+      }
+
+      Item* res = CreateItem(stack[stackLen - 1].item, file + textStart, textEnd - textStart);
+
+      if (isClosed)
+        res->isOpen = ClosedInFile;
 
       stack[stackLen++] = {res, level};
 
-      while (file[i] == '\n' || file[i] == '\r')
+      while (isNewLine(file[i]))
         i++;
 
       lineStart = i;
     }
   }
 
+  while (stackLen > 0) {
+    CheckForFileFlags(stack[stackLen - 1].item);
+    stackLen--;
+  }
+
   return root;
+}
+
+void SerializeRoot(Item* root, void* space, i32* bytesWritten, i32 capacity) {
+  StackEntry stack[200];
+  i32 stackLen = 0;
+
+  stack[stackLen++] = {root, -1};
+
+  char* text = (char*)space;
+  i32 len = 0;
+  *bytesWritten = 0;
+  while (stackLen > 0) {
+    StackEntry entry = stack[--stackLen];
+    Item* item = entry.item;
+
+    for (i32 i = item->childrenLen - 1; i >= 0; i--) {
+      stack[stackLen++] = {item->children[i], entry.level + 1};
+    }
+
+    if (len + item->textLen > capacity)
+      fail();
+
+    if (!IsRoot(item)) {
+      i32 tabSize = 2;
+      for (i32 i = 0; i < entry.level * tabSize; i++)
+        text[len++] = ' ';
+
+      memcpy(text + len, item->text, item->textLen);
+      len += item->textLen;
+
+      if (!item->isOpen && item->childrenLen > 0) {
+        memcpy(text + len, " /c", 3);
+        len += 3;
+      }
+
+      text[len++] = '\n';
+    }
+  }
+  *bytesWritten = len;
 }

@@ -304,8 +304,8 @@ typedef struct FileContent {
   i32 size;
 } FileContent;
 
-FileContent ReadMyFileImp(const char* path) {
-  HANDLE file = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+FileContent ReadMyFileImp(const wchar_t* path) {
+  HANDLE file = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
 
   LARGE_INTEGER size;
   GetFileSizeEx(file, &size);
@@ -509,6 +509,21 @@ i32 strlen(char* str) {
   while (str[res])
     res++;
   return res;
+}
+
+bool EndsWith(char* str, i32 len, char* substr) {
+  i32 substrLen = strlen(substr);
+  i32 currentSubstr = substrLen - 1;
+  for (i32 i = len - 1; i >= 0; i--) {
+    if (str[len - substrLen + currentSubstr] == substr[currentSubstr]) {
+      currentSubstr--;
+      if (currentSubstr == -1)
+        return true;
+    } else {
+      return false;
+    }
+  }
+  return false;
 }
 
 i32 wstrlen(c16* str) {

@@ -1,13 +1,14 @@
 #define UNICODE
 #define WIN32_LEAN_AND_MEAN
 
-#define FULLSCREEN
+// #define FULLSCREEN
 
 #include "../win32.cpp"
 #include "item.cpp"
 // #include "anim.cpp"
 // #include "vim.cpp"
 
+#define filePath L"sample.txt"
 enum Mode { Normal, Insert, ReplaceChar, VisualLine, Visual, Modal };
 Mode mode = Normal;
 
@@ -107,8 +108,19 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       }
     }
     break;
+  case WM_SYSCOMMAND:
+    if (wParam == SC_KEYMENU)
+      return 0;
+
+    break;
+  case WM_SYSKEYDOWN:
   case WM_KEYDOWN:
     if (mode == Normal) {
+      if (wParam == VK_F11) {
+
+        appState.isFullscreen = !appState.isFullscreen;
+        SetFullscreen(win, appState.isFullscreen);
+      }
       if (wParam == 'Q') {
         PostQuitMessage(0);
         appState.isRunning = false;
@@ -119,9 +131,6 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       if (wParam == 'I') {
         mode = Insert;
         ignoreNextCharEvent = true;
-      }
-      if (wParam == 'H') {
-        cursor.pos = clamp(cursor.pos - 1, 0, selectedItem->textLen);
       }
       if (wParam == 'O') {
         Item* newItem = CreateEmptyItem(8);
@@ -149,7 +158,15 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       if (wParam == 'D') {
         UpdateSelection(NextSibling(selectedItem));
       }
-      if (wParam == 'S') {
+      if (wParam == 'S' && IsKeyPressed(VK_CONTROL)) {
+        i32 capacity = MB(2);
+        void* buffer = valloc(capacity);
+        i32 bytesWritten;
+        SerializeRoot(root, buffer, &bytesWritten, capacity);
+        WriteMyFile(filePath, (char*)buffer, bytesWritten);
+        vfree(buffer);
+
+      } else if (wParam == 'S') {
         UpdateSelection(PrevSibling(selectedItem));
       }
       if (wParam == 'X') {
@@ -165,14 +182,14 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       }
       if (wParam == 'F') {
         if (!selectedItem->isOpen && selectedItem->childrenLen > 0)
-          selectedItem->isOpen = true;
+          selectedItem->isOpen = Open;
         else if (selectedItem->childrenLen > 0) {
           selectedItem = selectedItem->children[0];
         }
       }
       if (wParam == 'A') {
         if (selectedItem->isOpen)
-          selectedItem->isOpen = false;
+          selectedItem->isOpen = Closed;
         else if (!IsRoot(selectedItem->parent))
           selectedItem = selectedItem->parent;
       }
@@ -318,7 +335,7 @@ void PaintSplit(Item* root, Rect rect) {
       i32 len = entry.item->textLen;
       HDC dc = appState.dc;
       RECT re = {(i32)x, (i32)runningPos.y, i32(rect.x + rect.width), i32(rect.y + rect.height)};
-      DrawTextA(dc, text, len, &re, DT_LEFT | DT_TOP);
+      DrawTextA(dc, text, len, &re, DT_NOPREFIX | DT_LEFT | DT_TOP);
 
       if (entry.item == selectedItem) {
         i32 cursorX = x + GetTextWidth(appState.dc, entry.item->text, 0, cursor.pos);
@@ -339,7 +356,7 @@ void Init() {
   fontSize = initialFontSize;
   UpdateFontSize();
 
-  FileContent file = ReadMyFileImp("sample.txt");
+  FileContent file = ReadMyFileImp(filePath);
   root = ParseFileIntoRoot(file.content, file.size);
   selectedItem = root->children[0];
   vfree(file.content);
@@ -352,16 +369,16 @@ void DrawApp() {
 
   SelectBitmap(drawingDc, bitmap);
 
-  Rect left = {0, 0, appState.size.x / 3, appState.size.y};
-  Rect middle = {left.x + left.width, left.y, left.width, left.height};
+  Rect left = {0, 0, appState.size.x, appState.size.y};
+  // Rect middle = {left.x + left.width, left.y, left.width, left.height};
   // Rect right = {middle.x + middle.width, middle.y, middle.width, middle.height};
 
   // PaintSplit(root, left);
-  PaintSplit(root, middle);
+  PaintSplit(root, left);
   // PaintSplit(root, right);
 
-  PaintRect(left.x + left.width - 1, left.y, 2, left.height, line);
-  PaintRect(middle.x + middle.width - 1, middle.y, 2, middle.height, line);
+  // PaintRect(left.x + left.width - 1, left.y, 2, left.height, line);
+  // PaintRect(middle.x + middle.width - 1, middle.y, 2, middle.height, line);
 
   PaintWindow();
 }
