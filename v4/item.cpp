@@ -118,6 +118,42 @@ void RemoveChildAt(Item* item, i32 at) {
     item->isOpen = Closed;
 }
 
+Item* GetItemToSelectAfterDeleting(Item* item) {
+  Item* parent = item->parent;
+  Item* itemToSelectNext = parent;
+  i32 index = IndexOf(item);
+
+  if (index < parent->childrenLen - 1) {
+    itemToSelectNext = parent->children[index + 1];
+  } else if (index != 0) {
+    itemToSelectNext = parent->children[index - 1];
+  }
+  return itemToSelectNext;
+}
+
+void DeleteItem(Item* item) {
+  Item* parent = item->parent;
+  i32 index = IndexOf(item);
+
+  RemoveChildAt(parent, index);
+
+  Item* stack[200];
+  i32 stackLen = 0;
+  stack[stackLen++] = item;
+
+  while (stackLen > 0) {
+    Item* itemToRemove = stack[--stackLen];
+
+    for (i32 i = itemToRemove->childrenLen - 1; i >= 0; i--) {
+      stack[stackLen++] = itemToRemove->children[i];
+    }
+    // TODO: check for memory leaks
+    vfree(itemToRemove->children);
+    vfree(itemToRemove->text);
+    vfree(itemToRemove);
+  }
+}
+
 bool IsRoot(Item* item) {
   return item->parent == nullptr;
 }
@@ -192,7 +228,6 @@ void MoveItemRight(Item* item) {
 
 void MoveItemLeft(Item* item) {
   Item* parent = item->parent;
-  i32 index = IndexOf(item);
   if (!IsRoot(parent)) {
     int index = IndexOf(parent);
     RemoveChildAt(parent, IndexOf(item));
@@ -219,11 +254,6 @@ void MoveItemUp(Item* item) {
   }
 }
 
-struct StackEntry {
-  Item* item;
-  int level;
-};
-
 #define isNewLine(val) (val == '\n' || val == '\r')
 
 void CheckForFileFlags(Item* item) {
@@ -232,6 +262,11 @@ void CheckForFileFlags(Item* item) {
   else if (item->childrenLen > 0)
     item->isOpen = Open;
 }
+
+struct StackEntry {
+  Item* item;
+  int level;
+};
 
 Item* ParseFileIntoRoot(char* file, int fileLen) {
   Item* root = CreateRoot();

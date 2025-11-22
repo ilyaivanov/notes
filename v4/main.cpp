@@ -125,6 +125,11 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         PostQuitMessage(0);
         appState.isRunning = false;
       }
+      if (wParam == 'D') {
+        Item* itemToSelect = GetItemToSelectAfterDeleting(selectedItem);
+        DeleteItem(selectedItem);
+        UpdateSelection(itemToSelect);
+      }
       if (wParam == 'L' && IsKeyPressed(VK_MENU)) {
         MoveItemRight(selectedItem);
       } else if (wParam == 'L') {
@@ -136,13 +141,20 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       }
       if (wParam == 'O') {
         Item* newItem = CreateEmptyItem(8);
+        Item* newParent = selectedItem->parent;
 
         i32 index = IndexOf(selectedItem);
         i32 pos = index + 1;
-        if (IsKeyPressed(VK_SHIFT))
+        if (IsKeyPressed(VK_SHIFT)) {
           pos = index;
+        }
+        if (IsKeyPressed(VK_CONTROL)) {
+          pos = 0;
+          newParent = selectedItem;
+          newParent->isOpen = Open;
+        }
 
-        InsertChildAt(selectedItem->parent, newItem, pos);
+        InsertChildAt(newParent, newItem, pos);
         selectedItem = newItem;
         cursor.pos = 0;
         mode = Insert;
@@ -163,9 +175,6 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       } else if (wParam == 'K') {
         UpdateSelection(GetItemAbove(selectedItem));
       }
-      if (wParam == 'D') {
-        UpdateSelection(NextSibling(selectedItem));
-      }
       if (wParam == 'S' && IsKeyPressed(VK_CONTROL)) {
         i32 capacity = MB(2);
         void* buffer = valloc(capacity);
@@ -173,9 +182,6 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         SerializeRoot(root, buffer, &bytesWritten, capacity);
         WriteMyFile(filePath, (char*)buffer, bytesWritten);
         vfree(buffer);
-
-      } else if (wParam == 'S') {
-        UpdateSelection(PrevSibling(selectedItem));
       }
       if (wParam == 'X') {
         if (cursor.pos < selectedItem->textLen) {
