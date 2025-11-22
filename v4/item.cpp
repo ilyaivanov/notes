@@ -83,6 +83,20 @@ void RemoveChars(Item* item, i32 from, i32 to) {
   item->textLen -= to - from + 1;
 }
 
+bool IsRoot(Item* item) {
+  return item->parent == nullptr;
+}
+
+i32 GetItemLevel(Item* item) {
+  Item* parent = item->parent;
+  i32 level = 0;
+  while (!IsRoot(parent)) {
+    parent = parent->parent;
+    level++;
+  }
+  return level;
+}
+
 void CheckItemTextCapacity(Item* item, i32 charsToInsert) {
   if (item->textLen + charsToInsert > item->textCapacity) {
     item->textCapacity = item->textCapacity * 2 + charsToInsert;
@@ -168,10 +182,6 @@ void DeleteItem(Item* item) {
     vfree(itemToRemove->text);
     vfree(itemToRemove);
   }
-}
-
-bool IsRoot(Item* item) {
-  return item->parent == nullptr;
 }
 
 bool IsLast(Item* item) {

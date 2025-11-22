@@ -10,6 +10,8 @@
 
 #define filePath L"foo.txt"
 #define EMPTY_ITEM_TEXT_CAPACITY 8
+i32 step = 20;
+
 enum Mode { Normal, Insert, ReplaceChar, VisualLine, Visual, Modal };
 Mode mode = Normal;
 
@@ -48,7 +50,7 @@ MyBitmap canvas;
 
 struct Cursor {
   i32 pos;
-  f32 desiredOffset;
+  i32 desiredOffset;
 };
 Cursor cursor;
 
@@ -83,7 +85,6 @@ HFONT CreateAppFont(HDC dc, const wchar_t* name, i32 weight, i32 fontSize, DWORD
 void UpdateSelection(Item* item) {
   if (item) {
     selectedItem = item;
-    cursor.pos = 0;
   }
 }
 
@@ -91,9 +92,19 @@ void UpdateFontSize() {
   if (font)
     DeleteFont(font);
 
-  font = CreateAppFont(appState.dc, L"Segoe UI", FW_NORMAL, fontSize, CLEARTYPE_QUALITY);
+  font = CreateAppFont(appState.dc, L"Segoe UI", FW_NORMAL, fontSize,
+                       CLEARTYPE_QUALITY); // ANTIALIASED_QUALITY
+}
 
-  // ANTIALIASED_QUALITY);
+i32 GetTextWidth(char* text, i32 from, i32 to) {
+  RECT rc = {0, 0, 0, 0};
+
+  DrawTextA(appState.dc, text + from, to - from, &rc, DT_SINGLELINE | DT_NOPREFIX | DT_CALCRECT);
+  return rc.right - rc.left;
+}
+
+i32 SelectedItemTextWidth(i32 to) {
+  return GetTextWidth(selectedItem->text, 0, to);
 }
 
 bool ignoreNextCharEvent;
@@ -113,8 +124,12 @@ void HandleMovement(UINT wParam) {
     MoveItemRight(selectedItem);
 }
 
-void HandleEnter() {
+void UpdateCursorPosWithDesiredOffset(i32 pos) {
+  cursor.pos = clamp(pos, 0, selectedItem->textLen);
+  cursor.desiredOffset = GetItemLevel(selectedItem) * step + SelectedItemTextWidth(cursor.pos);
+}
 
+void HandleEnter() {
   i32 charsToNext = selectedItem->textLen - cursor.pos;
   Item* newItem = CreateEmptyItem(charsToNext + EMPTY_ITEM_TEXT_CAPACITY);
   InsertChildAt(selectedItem->parent, newItem, IndexOf(selectedItem) + 1);
@@ -124,7 +139,25 @@ void HandleEnter() {
   }
 
   selectedItem = newItem;
-  cursor.pos = 0;
+  UpdateCursorPosWithDesiredOffset(0);
+}
+
+void FindPositionBasedOnDesiredOffset() {
+  i32 levelOffset = GetItemLevel(selectedItem) * step;
+  i32 offset = levelOffset;
+  i32 targetLen = 0;
+  while (offset < cursor.desiredOffset && targetLen < selectedItem->textLen) {
+    targetLen++;
+    offset = levelOffset + SelectedItemTextWidth(targetLen);
+  }
+
+  if (targetLen > 0) {
+    i32 prevOffset = levelOffset + SelectedItemTextWidth(targetLen - 1);
+    if (offset - cursor.desiredOffset > cursor.desiredOffset - prevOffset)
+      targetLen--;
+  }
+
+  cursor.pos = targetLen;
 }
 
 void DrawApp();
@@ -142,11 +175,11 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       else if (wParam == VK_BACK) {
         if (cursor.pos > 0) {
           RemoveChars(selectedItem, cursor.pos - 1, cursor.pos - 1);
-          cursor.pos--;
+          UpdateCursorPosWithDesiredOffset(cursor.pos - 1);
         }
       } else {
         InsertCharAt(selectedItem, cursor.pos, wParam);
-        cursor.pos++;
+        UpdateCursorPosWithDesiredOffset(cursor.pos + 1);
       }
     }
     break;
@@ -177,11 +210,12 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         Item* itemToSelect = GetItemToSelectAfterDeleting(selectedItem);
         DeleteItem(selectedItem);
         UpdateSelection(itemToSelect);
+        FindPositionBasedOnDesiredOffset();
       }
       if (wParam == 'L' && IsKeyPressed(VK_MENU)) {
         MoveItemRight(selectedItem);
       } else if (wParam == 'L') {
-        cursor.pos = clamp(cursor.pos + 1, 0, selectedItem->textLen);
+        UpdateCursorPosWithDesiredOffset(cursor.pos + 1);
       }
       if (wParam == VK_OEM_PLUS && IsKeyPressed(VK_CONTROL)) {
         fontSize++;
@@ -192,7 +226,7 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         UpdateFontSize();
       }
       if (wParam == 'I' && IsKeyPressed(VK_SHIFT)) {
-        cursor.pos = 0;
+        UpdateCursorPosWithDesiredOffset(0);
         EnterInsertMode();
       } else if (wParam == 'I') {
         EnterInsertMode();
@@ -214,23 +248,25 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
 
         InsertChildAt(newParent, newItem, pos);
         selectedItem = newItem;
-        cursor.pos = 0;
+        UpdateCursorPosWithDesiredOffset(0);
         EnterInsertMode();
       }
       if (wParam == 'H' && IsKeyPressed(VK_MENU)) {
         MoveItemLeft(selectedItem);
       } else if (wParam == 'H') {
-        cursor.pos = clamp(cursor.pos - 1, 0, selectedItem->textLen);
+        UpdateCursorPosWithDesiredOffset(cursor.pos - 1);
       }
       if (wParam == 'J' && IsKeyPressed(VK_MENU)) {
         MoveItemDown(selectedItem);
       } else if (wParam == 'J') {
         UpdateSelection(GetItemBelow(selectedItem));
+        FindPositionBasedOnDesiredOffset();
       }
       if (wParam == 'K' && IsKeyPressed(VK_MENU)) {
         MoveItemUp(selectedItem);
       } else if (wParam == 'K') {
         UpdateSelection(GetItemAbove(selectedItem));
+        FindPositionBasedOnDesiredOffset();
       }
       if (wParam == 'S' && IsKeyPressed(VK_CONTROL)) {
         i32 capacity = MB(2);
@@ -248,7 +284,7 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       if (wParam == VK_BACK) {
         if (cursor.pos > 0) {
           RemoveChars(selectedItem, cursor.pos - 1, cursor.pos - 1);
-          cursor.pos--;
+          UpdateCursorPosWithDesiredOffset(cursor.pos - 1);
         }
       }
       if (wParam == 'S') {
@@ -259,7 +295,7 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         }
       }
       if (wParam == 'A' && IsKeyPressed(VK_SHIFT)) {
-        cursor.pos = selectedItem->textLen;
+        UpdateCursorPosWithDesiredOffset(selectedItem->textLen);
         EnterInsertMode();
       } else if (wParam == 'A') {
         if (selectedItem->isOpen)
@@ -350,25 +386,11 @@ f32 GetFontHeight() {
   return textMetric.tmAscent + textMetric.tmDescent;
 }
 
-i32 GetTextWidth(HDC dc, char* text, i32 from, i32 to) {
-  // if (IsKeyPressed(VK_SPACE)) {
-  RECT rc = {0, 0, 0, 0};
-
-  DrawTextA(dc, text + from, to - from, &rc, DT_SINGLELINE | DT_NOPREFIX | DT_CALCRECT);
-  return rc.right - rc.left;
-  // } else {
-  //   SIZE s2;
-  //   GetTextExtentPoint32A(dc, text + from, to - from, &s2);
-  //   return s2.cx;
-  // }
-}
-
 void PaintSplit(Item* root, Rect rect) {
   v2 runningPos = vec2(rect.x, rect.y) + padding;
 
   StackEntry stack[200];
   int stackLen = 0;
-  f32 step = 20;
 
   stack[stackLen++] = {root, -1};
 
@@ -403,7 +425,7 @@ void PaintSplit(Item* root, Rect rect) {
       DrawTextA(dc, text, len, &re, DT_NOPREFIX | DT_LEFT | DT_TOP);
 
       if (entry.item == selectedItem) {
-        i32 cursorX = x + GetTextWidth(appState.dc, entry.item->text, 0, cursor.pos);
+        i32 cursorX = x + SelectedItemTextWidth(cursor.pos);
         PaintRect(cursorX, runningPos.y, 1, GetFontHeight(), cursorColorToUse);
       }
       runningPos.y += GetFontHeight();
@@ -433,6 +455,7 @@ void DrawApp() {
   SelectFont(appState.dc, font);
 
   SelectBitmap(drawingDc, bitmap);
+  RECT windowRect = {0, 0, (i32)appState.size.x, (i32)appState.size.y};
 
   Rect left = {0, 0, appState.size.x, appState.size.y};
   // Rect middle = {left.x + left.width, left.y, left.width, left.height};
@@ -445,6 +468,23 @@ void DrawApp() {
   // PaintRect(left.x + left.width - 1, left.y, 2, left.height, line);
   // PaintRect(middle.x + middle.width - 1, middle.y, 2, middle.height, line);
 
+  RECT footerRect = windowRect;
+  footerRect.top = windowRect.bottom - 200;
+  footerRect.right -= 10;
+  footerRect.bottom -= 5;
+
+  CharBuffer buff = {};
+  Append(&buff, L"Desired: ");
+  Append(&buff, cursor.desiredOffset);
+
+  Append(&buff, L"\nActual: ");
+  Append(&buff, GetItemLevel(selectedItem) * step);
+  Append(&buff, L" + ");
+  Append(&buff, GetTextWidth(selectedItem->text, 0, cursor.pos));
+
+  v3 color = {0.8, 0.8, 0.8};
+  SetColors(color, bg);
+  DrawTextW(appState.dc, buff.content, buff.len, &footerRect, DT_NOPREFIX | DT_BOTTOM | DT_RIGHT);
   PaintWindow();
 }
 
