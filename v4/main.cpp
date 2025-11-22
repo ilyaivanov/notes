@@ -101,6 +101,17 @@ void EnterInsertMode() {
   ignoreNextCharEvent = true;
 }
 
+void HandleMovement(UINT wParam) {
+  if (wParam == 'H' && IsKeyPressed(VK_MENU))
+    MoveItemLeft(selectedItem);
+  if (wParam == 'J' && IsKeyPressed(VK_MENU))
+    MoveItemDown(selectedItem);
+  if (wParam == 'K' && IsKeyPressed(VK_MENU))
+    MoveItemUp(selectedItem);
+  if (wParam == 'L' && IsKeyPressed(VK_MENU))
+    MoveItemRight(selectedItem);
+}
+
 void DrawApp();
 LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
   switch (message) {
@@ -129,6 +140,9 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
     break;
   case WM_SYSKEYDOWN:
   case WM_KEYDOWN:
+    if (mode == Insert) {
+      HandleMovement(wParam);
+    }
     if (mode == Normal) {
       if (wParam == VK_F11) {
 
