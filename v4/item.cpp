@@ -83,14 +83,18 @@ void RemoveChars(Item* item, i32 from, i32 to) {
   item->textLen -= to - from + 1;
 }
 
-void InsertCharAt(Item* item, i32 at, c8 ch) {
-  if (item->textLen == item->textCapacity) {
-    item->textCapacity *= 2;
+void CheckItemTextCapacity(Item* item, i32 charsToInsert) {
+  if (item->textLen + charsToInsert > item->textCapacity) {
+    item->textCapacity = item->textCapacity * 2 + charsToInsert;
     char* newStr = (char*)valloc(item->textCapacity * sizeof(char));
     memcpy(newStr, item->text, item->textLen);
     vfree(item->text);
     item->text = newStr;
   }
+}
+
+void InsertCharAt(Item* item, i32 at, c8 ch) {
+  CheckItemTextCapacity(item, 1);
 
   char* text = item->text;
   i32 len = item->textLen;
@@ -99,6 +103,18 @@ void InsertCharAt(Item* item, i32 at, c8 ch) {
   }
   text[at] = ch;
   item->textLen++;
+}
+
+void InsertCharsAt(Item* item, i32 at, c8* text, i32 textLen) {
+  CheckItemTextCapacity(item, textLen);
+
+  for (i32 i = item->textLen; i > at; i--) {
+    item->text[i + textLen - 1] = item->text[i - 1];
+  }
+  for (i32 i = 0; i < textLen; i++) {
+    item->text[at + i] = text[i];
+  }
+  item->textLen += textLen;
 }
 
 i32 IndexOf(Item* item) {

@@ -9,6 +9,7 @@
 // #include "vim.cpp"
 
 #define filePath L"foo.txt"
+#define EMPTY_ITEM_TEXT_CAPACITY 8
 enum Mode { Normal, Insert, ReplaceChar, VisualLine, Visual, Modal };
 Mode mode = Normal;
 
@@ -112,6 +113,20 @@ void HandleMovement(UINT wParam) {
     MoveItemRight(selectedItem);
 }
 
+void HandleEnter() {
+
+  i32 charsToNext = selectedItem->textLen - cursor.pos;
+  Item* newItem = CreateEmptyItem(charsToNext + EMPTY_ITEM_TEXT_CAPACITY);
+  InsertChildAt(selectedItem->parent, newItem, IndexOf(selectedItem) + 1);
+  if (charsToNext > 0) {
+    InsertCharsAt(newItem, 0, selectedItem->text + cursor.pos, charsToNext);
+    RemoveChars(selectedItem, cursor.pos + 1, selectedItem->textLen);
+  }
+
+  selectedItem = newItem;
+  cursor.pos = 0;
+}
+
 void DrawApp();
 LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
   switch (message) {
@@ -122,7 +137,9 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
     else if (mode == Insert) {
       if (wParam == VK_ESCAPE) {
         mode = Normal;
-      } else if (wParam == VK_BACK) {
+      } else if (wParam == VK_RETURN)
+        HandleEnter();
+      else if (wParam == VK_BACK) {
         if (cursor.pos > 0) {
           RemoveChars(selectedItem, cursor.pos - 1, cursor.pos - 1);
           cursor.pos--;
@@ -144,6 +161,9 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       HandleMovement(wParam);
     }
     if (mode == Normal) {
+
+      if (wParam == VK_RETURN)
+        HandleEnter();
       if (wParam == VK_F11) {
 
         appState.isFullscreen = !appState.isFullscreen;
@@ -178,7 +198,7 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         EnterInsertMode();
       }
       if (wParam == 'O') {
-        Item* newItem = CreateEmptyItem(8);
+        Item* newItem = CreateEmptyItem(EMPTY_ITEM_TEXT_CAPACITY);
         Item* newParent = selectedItem->parent;
 
         i32 index = IndexOf(selectedItem);
