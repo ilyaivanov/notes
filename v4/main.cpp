@@ -8,7 +8,7 @@
 // #include "anim.cpp"
 // #include "vim.cpp"
 
-#define filePath L"sample.txt"
+#define filePath L"foo.txt"
 enum Mode { Normal, Insert, ReplaceChar, VisualLine, Visual, Modal };
 Mode mode = Normal;
 
@@ -86,7 +86,21 @@ void UpdateSelection(Item* item) {
   }
 }
 
+void UpdateFontSize() {
+  if (font)
+    DeleteFont(font);
+
+  font = CreateAppFont(appState.dc, L"Segoe UI", FW_NORMAL, fontSize, CLEARTYPE_QUALITY);
+
+  // ANTIALIASED_QUALITY);
+}
+
 bool ignoreNextCharEvent;
+void EnterInsertMode() {
+  mode = Insert;
+  ignoreNextCharEvent = true;
+}
+
 void DrawApp();
 LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
   switch (message) {
@@ -135,9 +149,19 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       } else if (wParam == 'L') {
         cursor.pos = clamp(cursor.pos + 1, 0, selectedItem->textLen);
       }
-      if (wParam == 'I') {
-        mode = Insert;
-        ignoreNextCharEvent = true;
+      if (wParam == VK_OEM_PLUS && IsKeyPressed(VK_CONTROL)) {
+        fontSize++;
+        UpdateFontSize();
+      }
+      if (wParam == VK_OEM_MINUS && IsKeyPressed(VK_CONTROL)) {
+        fontSize--;
+        UpdateFontSize();
+      }
+      if (wParam == 'I' && IsKeyPressed(VK_SHIFT)) {
+        cursor.pos = 0;
+        EnterInsertMode();
+      } else if (wParam == 'I') {
+        EnterInsertMode();
       }
       if (wParam == 'O') {
         Item* newItem = CreateEmptyItem(8);
@@ -157,8 +181,7 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         InsertChildAt(newParent, newItem, pos);
         selectedItem = newItem;
         cursor.pos = 0;
-        mode = Insert;
-        ignoreNextCharEvent = true;
+        EnterInsertMode();
       }
       if (wParam == 'H' && IsKeyPressed(VK_MENU)) {
         MoveItemLeft(selectedItem);
@@ -194,14 +217,17 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
           cursor.pos--;
         }
       }
-      if (wParam == 'F') {
+      if (wParam == 'S') {
         if (!selectedItem->isOpen && selectedItem->childrenLen > 0)
           selectedItem->isOpen = Open;
         else if (selectedItem->childrenLen > 0) {
           selectedItem = selectedItem->children[0];
         }
       }
-      if (wParam == 'A') {
+      if (wParam == 'A' && IsKeyPressed(VK_SHIFT)) {
+        cursor.pos = selectedItem->textLen;
+        EnterInsertMode();
+      } else if (wParam == 'A') {
         if (selectedItem->isOpen)
           selectedItem->isOpen = Closed;
         else if (!IsRoot(selectedItem->parent))
@@ -301,15 +327,6 @@ i32 GetTextWidth(HDC dc, char* text, i32 from, i32 to) {
   //   GetTextExtentPoint32A(dc, text + from, to - from, &s2);
   //   return s2.cx;
   // }
-}
-
-void UpdateFontSize() {
-  if (font)
-    DeleteFont(font);
-
-  font = CreateAppFont(appState.dc, L"Segoe UI", FW_NORMAL, fontSize, CLEARTYPE_QUALITY);
-
-  // ANTIALIASED_QUALITY);
 }
 
 void PaintSplit(Item* root, Rect rect) {
