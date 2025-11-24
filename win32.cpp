@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <windows.h>
 #include <windowsx.h>
+#include <winuser.h>
 
 extern "C" int _fltused = 0x9875;
 typedef char c8;
@@ -349,11 +350,26 @@ inline void AddChar(CharBuffer* buff, wchar_t ch) {
   buff->content[buff->len++] = ch;
 }
 
+inline void AddChar(CharBuffer* buff, char ch) {
+  buff->content[buff->len++] = (wchar_t)ch;
+}
+
 void Append(CharBuffer* buff, const wchar_t* str) {
   while (*str) {
     AddChar(buff, *str);
     str++;
   }
+}
+
+void Append(CharBuffer* buff, const char* str) {
+  while (*str) {
+    AddChar(buff, *str);
+    str++;
+  }
+}
+
+void Append(CharBuffer* buff, char ch) {
+  AddChar(buff, ch);
 }
 
 i32 abs(i32 a) {
@@ -544,7 +560,7 @@ extern "C" void* memcpy(void* dst, const void* src, size_t n) {
 
 c16* ClipboardPaste(HWND window, i32* size) {
   OpenClipboard(window);
-  HANDLE hClipboardData = GetClipboardData(CF_UNICODETEXT);
+  HANDLE hClipboardData = GetClipboardData(CF_TEXT); // CF_UNICODETEXT
   c16* pchData = (c16*)GlobalLock(hClipboardData);
   c16* res = NULL;
   if (pchData) {

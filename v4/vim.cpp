@@ -2,6 +2,65 @@
 #include "..//win32.cpp"
 #include "item.cpp"
 
+enum KeyFlags : u8 { Ctrl = 1, Alt = 2, Win = 4 };
+
+struct Key {
+  u8 flags;
+  u32 code;
+};
+
+struct CommandBuffer {
+  i32 len;
+  Key keys[255];
+};
+
+CommandBuffer command = {};
+CommandBuffer lastCommand = {};
+
+void ClearCommand() {
+  memcpy(&lastCommand, &command, sizeof(CommandBuffer));
+  command.len = 0;
+}
+
+void HandleCommand() {
+  if (command.len > 0) {
+    if (command.keys[command.len - 1].code == VK_ESCAPE)
+      ClearCommand();
+  }
+}
+
+// mode, selectedItem, cursor
+void AppendChar(u32 ch) {
+  command.keys[command.len].code = ch;
+  if (IsKeyPressed(VK_CONTROL))
+    command.keys[command.len].flags |= Ctrl;
+  if (IsKeyPressed(VK_MENU))
+    command.keys[command.len].flags |= Alt;
+  if (IsKeyPressed(VK_LWIN))
+    command.keys[command.len].flags |= Win;
+
+  command.len++;
+
+  HandleCommand();
+}
+
+//
+//
+//
+//
+//
+//
+
+bool IsLetter(char ch) {
+  return (ch >= L'a' && ch <= L'z') || (ch >= L'A' && ch <= L'Z');
+}
+
+char ToLower(char ch) {
+  if (ch >= L'A' && ch <= L'Z')
+    return ch + ('a' - 'A');
+  return ch;
+}
+
 u32 IsAlphaNumeric(c16 ch) {
   return (ch >= L'0' && ch <= L'9') || (ch >= L'a' && ch <= L'z') || (ch >= L'A' && ch <= L'Z');
 }

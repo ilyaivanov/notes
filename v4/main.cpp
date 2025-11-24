@@ -6,20 +6,14 @@
 #include "../win32.cpp"
 #include "item.cpp"
 #include "vim.cpp"
-// #include "anim.cpp"
-// #include "vim.cpp"
 
-#define filePath L"sample.txt"
+#define filePath L"foo.txt"
 #define EMPTY_ITEM_TEXT_CAPACITY 8
 i32 step = 20;
-
-enum Mode { Normal, Insert, ReplaceChar, VisualLine, Visual, Modal };
-Mode mode = Normal;
 
 HWND win;
 AppState appState;
 HFONT font;
-i32 fontSize;
 #define initialFontSize 14
 
 HDC windowDc;
@@ -49,12 +43,16 @@ HBITMAP bitmap;
 BITMAPINFO bitmapInfo;
 MyBitmap canvas;
 
+enum Mode { Normal, Insert, ReplaceChar, VisualLine, Visual, Modal };
+
 struct Cursor {
   i32 pos;
   i32 desiredOffset;
 };
-Cursor cursor;
 
+Mode mode = Normal;
+i32 fontSize;
+Cursor cursor;
 Item* root;
 Item* selectedItem;
 
@@ -183,19 +181,23 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
     if (ignoreNextCharEvent)
       ignoreNextCharEvent = false;
 
-    else if (mode == Insert) {
-      if (wParam == VK_ESCAPE) {
-        mode = Normal;
-      } else if (wParam == VK_RETURN)
-        HandleEnter();
-      else if (wParam == VK_BACK) {
-        if (cursor.pos > 0) {
-          RemoveChars(selectedItem, cursor.pos - 1, cursor.pos - 1);
-          UpdateCursorPosWithDesiredOffset(cursor.pos - 1);
+    else {
+      if (mode == Normal) {
+        AppendChar(wParam);
+      } else if (mode == Insert) {
+        if (wParam == VK_ESCAPE) {
+          mode = Normal;
+        } else if (wParam == VK_RETURN)
+          HandleEnter();
+        else if (wParam == VK_BACK) {
+          if (cursor.pos > 0) {
+            RemoveChars(selectedItem, cursor.pos - 1, cursor.pos - 1);
+            UpdateCursorPosWithDesiredOffset(cursor.pos - 1);
+          }
+        } else {
+          InsertCharAt(selectedItem, cursor.pos, wParam);
+          UpdateCursorPosWithDesiredOffset(cursor.pos + 1);
         }
-      } else {
-        InsertCharAt(selectedItem, cursor.pos, wParam);
-        UpdateCursorPosWithDesiredOffset(cursor.pos + 1);
       }
     }
     break;
@@ -215,7 +217,14 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       }
     }
     if (mode == Normal) {
+      if (IsLetter(wParam)) {
+        if (!IsKeyPressed(VK_SHIFT))
+          AppendChar(ToLower(wParam));
+        else
+          AppendChar(wParam);
 
+        ignoreNextCharEvent = true;
+      }
       if (wParam == VK_RETURN)
         HandleEnter();
       if (wParam == VK_F11) {
@@ -511,6 +520,38 @@ void Init() {
   vfree(file.content);
 };
 
+void AppendCommandBuffer(CharBuffer& buff, CommandBuffer& commandBuffer) {
+  CharBuffer commandFormatted = {};
+  for (i32 i = 0; i < commandBuffer.len; i++) {
+    u32 code = commandBuffer.keys[i].code;
+    u32 flags = commandBuffer.keys[i].flags;
+    if (flags & Ctrl || flags & Alt || flags & Win)
+      Append(&commandFormatted, "<");
+    if (flags & Ctrl)
+      Append(&commandFormatted, "C");
+    if (flags & Alt)
+      Append(&commandFormatted, "A");
+    if (flags & Win)
+      Append(&commandFormatted, "W");
+
+    if (flags & Ctrl || flags & Alt || flags & Win)
+      Append(&commandFormatted, "-");
+
+    if (code == VK_ESCAPE)
+      Append(&commandFormatted, "Esc");
+    else
+      Append(&commandFormatted, (char)code);
+
+    if (flags & Ctrl || flags & Alt || flags & Win)
+      Append(&commandFormatted, ">");
+
+    if (i != commandBuffer.len - 1)
+      Append(&commandFormatted, " ");
+  }
+
+  Append(&buff, commandFormatted.content);
+}
+
 void DrawApp() {
   memset(canvas.pixels, round(bg.x * 255.0f), canvas.width * canvas.height * 4);
 
@@ -543,6 +584,19 @@ void DrawApp() {
   Append(&buff, GetItemLevel(selectedItem) * step);
   Append(&buff, L" + ");
   Append(&buff, GetTextWidth(selectedItem->text, 0, cursor.pos));
+
+  Append(&buff, L"\nFont: ");
+  Append(&buff, fontSize);
+
+  Append(&buff, L"\nCommand (");
+  Append(&buff, command.len);
+  Append(&buff, L"): ");
+  AppendCommandBuffer(buff, command);
+
+  Append(&buff, L"\nLastCommand (");
+  Append(&buff, lastCommand.len);
+  Append(&buff, L"): ");
+  AppendCommandBuffer(buff, lastCommand);
 
   v3 color = {0.8, 0.8, 0.8};
   SetColors(color, bg);
