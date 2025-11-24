@@ -5,6 +5,7 @@
 
 #include "../win32.cpp"
 #include "item.cpp"
+#include "vim.cpp"
 // #include "anim.cpp"
 // #include "vim.cpp"
 
@@ -124,10 +125,6 @@ void HandleMovement(UINT wParam) {
     MoveItemRight(selectedItem);
 }
 
-u32 IsAlphaNumeric(c16 ch) {
-  return (ch >= L'0' && ch <= L'9') || (ch >= L'a' && ch <= L'z') || (ch >= L'A' && ch <= L'Z');
-}
-
 void UpdateCursorPosWithDesiredOffset(i32 pos) {
   cursor.pos = clamp(pos, 0, selectedItem->textLen);
   cursor.desiredOffset = GetItemLevel(selectedItem) * step + SelectedItemTextWidth(cursor.pos);
@@ -225,6 +222,28 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
 
         appState.isFullscreen = !appState.isFullscreen;
         SetFullscreen(win, appState.isFullscreen);
+      }
+
+      if (wParam == 'W' && IsKeyPressed(VK_SHIFT)) {
+        UpdateCursorPosWithDesiredOffset(
+            JumpWordForwardIgnorePunctuation(selectedItem, cursor.pos));
+      } else if (wParam == 'W') {
+        UpdateCursorPosWithDesiredOffset(JumpWordForward(selectedItem, cursor.pos));
+      }
+
+      if (wParam == 'B' && IsKeyPressed(VK_SHIFT)) {
+
+        UpdateCursorPosWithDesiredOffset(
+            JumpWordBackwardIgnorePunctuation(selectedItem, cursor.pos));
+      } else if (wParam == 'B') {
+        UpdateCursorPosWithDesiredOffset(JumpWordBackward(selectedItem, cursor.pos));
+      }
+
+      if (wParam == '0') {
+        UpdateCursorPosWithDesiredOffset(0);
+      }
+      if (wParam == '4' && IsKeyPressed(VK_SHIFT)) {
+        UpdateCursorPosWithDesiredOffset(selectedItem->textLen);
       }
       if (wParam == 'Q') {
         PostQuitMessage(0);
