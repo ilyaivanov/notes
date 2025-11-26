@@ -1,63 +1,78 @@
-Command Buffer
-  Allows to have . (repeat last command)
-  Allows to have actions consisting from multiple keys and combinators (ctrl, alt, win)
-Note system
-  Undo\redo
-  Text wrap
-  Scroll of the items
-  Visual Line mode
-  Working with clipboard (copy\paste) /c
-    Clipboard history
-    Clipboard for items (treat \n as new item)
-  Remove item and replace it with the children
-  Search
-  Implement .
-  Unicode (UTF-16 support)
-  Visual mode
-  Typography  /c
-    Font size and weight for specific items
-  Focusing on an item
-  Show if file is saved /c
-    Consider saving a file during exit
-  Different views for the items /c
-    	Tree (default)
-    Board
-    Gallery
-    Miller list
-Bugs
-  a s doesn't update cursor position
-Things to think about
-  Multiple cursors
-  Two hand navigation /c
-    right hand makes regular hjkl motions
-    left hand makes structural motions (go to parent, sibling, etc)
-  Cursor history
-  Complex motions like dw ci etc
-Logs
-  21.11.25 /c
-    Started the notes project
-    Tree view for the notes
-    Parse file into a tree structure
-    Insert chars into items 
-    Insert mode
-  22.11.25 /c
-    Serialize items into a file with /c flag at end for closed items
-    Moving items hjkl
-    Delete items (need to check for memory leak)
-    Done /c
-      <C-=> and <C--> to increase and decrease font size
-      I A
-      a s - close\open item
-      item movement in insert mode
-      Enter breaks item into two /c
-        Mode remains the same
-      Desired offset
-      <C-w> in insert mode
-      Jump across the tree via <C-hjkl>
-  23.11.25 day off
-  24.11.25 /c
-    Done (24.11)
-      $ and 0
-      w b W B
-      Ability to have command buffer, so that I can handle di, ci, dw, etc
-  25.11.25 - day off
+Note system 
+  Done
+    Rewrite all actions in a separate actions.cpp file with shortcuts as data	
+    G and gg actions
+    Working with clipboard (copy\paste) /c
+      Clipboard history
+      Clipboard for items (treat \n as new item)
+  Bugs
+  Backlog
+    Undo\redo
+    Text wrap
+    Scroll of the items
+    Visual Line mode
+    Remove item and replace it with the children
+    Search
+    Implement .
+    Unicode (UTF-16 support)
+    Visual mode
+    Typography  /c
+      Font size and weight for specific items
+    Focusing on an item
+    Tags
+    Links
+    Show if file is saved /c
+      Consider saving a file during exit
+    Different views for the items /c
+      Tree (default)
+      Board
+      Gallery
+      Miller list
+  Command Buffer /c
+    Allows to have . (repeat last command)
+    Allows to have actions consisting from multiple keys and combinators (ctrl, alt, win)
+  Things to think about /c
+    Multiple cursors
+    Two hand navigation /c
+      right hand makes regular hjkl motions
+      left hand makes structural motions (go to parent, sibling, etc)
+    Cursor history
+    Complex motions like dw ci etc
+  Logs /c
+    21.11.25 /c
+      Started the notes project
+      Tree view for the notes
+      Parse file into a tree structure
+      Insert chars into items 
+      Insert mode
+    22.11.25 /c
+      Serialize items into a file with /c flag at end for closed items
+      Moving items hjkl
+      Delete items (need to check for memory leak)
+      Done /c
+        <C-=> and <C--> to increase and decrease font size
+        I A
+        a s - close\open item
+        item movement in insert mode
+        Enter breaks item into two /c
+          Mode remains the same
+        Desired offset
+        <C-w> in insert mode
+        Jump across the tree via <C-hjkl>
+    23.11.25 - day off
+    24.11.25 /c
+      Done (24.11)
+        $ and 0
+        w b W B
+        Ability to have command buffer, so that I can handle di, ci, dw, etc
+    25.11.25 - day off
+    26.11.25
+Courses\books /c
+  Nature of Code
+  	x86 modern assembly
+  Computer Enhance
+  Learn OpenGL
+  DirectX 12 Graphics
+  Fundamentals of Backend Engineering
+  Creative Coding with Canvas and WebGL
+  JS on the Background
