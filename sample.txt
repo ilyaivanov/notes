@@ -1,22 +1,17 @@
+Command Buffer
+  Allows to have . (repeat last command)
+  Allows to have actions consisting from multiple keys and combinators (ctrl, alt, win)
 Note system
-  Done /c
-    <C-=> and <C--> to increase and decrease font size
-    I A
-    a s - close\open item
-    item movement in insert mode
-    Enter breaks item into two /c
-      Mode remains the same
-    Desired offset
-    <C-w> in insert mode
-  w b W B
+  Undo\redo
   Text wrap
   Scroll of the items
-  Undo\redo
   Visual Line mode
   Working with clipboard (copy\paste) /c
     Clipboard history
     Clipboard for items (treat \n as new item)
+  Remove item and replace it with the children
   Search
+  Implement .
   Unicode (UTF-16 support)
   Visual mode
   Typography  /c
@@ -29,9 +24,9 @@ Note system
     Board
     Gallery
     Miller list
-Bugs /c
+Bugs
   a s doesn't update cursor position
-Things to think about /c
+Things to think about
   Multiple cursors
   Two hand navigation /c
     right hand makes regular hjkl motions
@@ -45,7 +40,24 @@ Logs
     Parse file into a tree structure
     Insert chars into items 
     Insert mode
-  22.11.25
+  22.11.25 /c
     Serialize items into a file with /c flag at end for closed items
     Moving items hjkl
     Delete items (need to check for memory leak)
+    Done /c
+      <C-=> and <C--> to increase and decrease font size
+      I A
+      a s - close\open item
+      item movement in insert mode
+      Enter breaks item into two /c
+        Mode remains the same
+      Desired offset
+      <C-w> in insert mode
+      Jump across the tree via <C-hjkl>
+  23.11.25 day off
+  24.11.25 /c
+    Done (24.11)
+      $ and 0
+      w b W B
+      Ability to have command buffer, so that I can handle di, ci, dw, etc
+  25.11.25 - day off
