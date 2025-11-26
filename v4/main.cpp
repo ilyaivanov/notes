@@ -5,10 +5,9 @@
 
 #include "../win32.cpp"
 #include "item.cpp"
-#include "vim.cpp"
+#include "actions.cpp"
 
 #define filePath L"foo.txt"
-#define EMPTY_ITEM_TEXT_CAPACITY 8
 i32 step = 20;
 
 HWND win;
@@ -43,19 +42,6 @@ HBITMAP bitmap;
 BITMAPINFO bitmapInfo;
 MyBitmap canvas;
 
-enum Mode { Normal, Insert, ReplaceChar, VisualLine, Visual, Modal };
-
-struct Cursor {
-  i32 pos;
-  i32 desiredOffset;
-};
-
-Mode mode = Normal;
-i32 fontSize;
-Cursor cursor;
-Item* root;
-Item* selectedItem;
-
 void PaintWindow() {
   StretchDIBits(windowDc, 0, 0, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height,
                 canvas.pixels, &bitmapInfo, DIB_RGB_COLORS, SRCCOPY);
@@ -79,12 +65,6 @@ HFONT CreateAppFont(HDC dc, const wchar_t* name, i32 weight, i32 fontSize, DWORD
 
                            DEFAULT_PITCH, name);
   return font;
-}
-
-void UpdateSelection(Item* item) {
-  if (item) {
-    selectedItem = item;
-  }
 }
 
 void UpdateFontSize() {
@@ -225,132 +205,35 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
 
         ignoreNextCharEvent = true;
       }
-      if (wParam == VK_RETURN)
-        HandleEnter();
-      if (wParam == VK_F11) {
 
-        appState.isFullscreen = !appState.isFullscreen;
-        SetFullscreen(win, appState.isFullscreen);
-      }
+      if (IsKeyPressed(VK_CONTROL)) {
+        if (wParam == VK_OEM_PLUS)
+          AppendChar('=');
 
-      if (wParam == 'W' && IsKeyPressed(VK_SHIFT)) {
-        UpdateCursorPosWithDesiredOffset(
-            JumpWordForwardIgnorePunctuation(selectedItem, cursor.pos));
-      } else if (wParam == 'W') {
-        UpdateCursorPosWithDesiredOffset(JumpWordForward(selectedItem, cursor.pos));
+        if (wParam == VK_OEM_MINUS)
+          AppendChar('-');
       }
 
-      if (wParam == 'B' && IsKeyPressed(VK_SHIFT)) {
-
-        UpdateCursorPosWithDesiredOffset(
-            JumpWordBackwardIgnorePunctuation(selectedItem, cursor.pos));
-      } else if (wParam == 'B') {
-        UpdateCursorPosWithDesiredOffset(JumpWordBackward(selectedItem, cursor.pos));
-      }
-
-      if (wParam == '0') {
-        UpdateCursorPosWithDesiredOffset(0);
-      }
-      if (wParam == '4' && IsKeyPressed(VK_SHIFT)) {
-        UpdateCursorPosWithDesiredOffset(selectedItem->textLen);
-      }
-      if (wParam == 'Q') {
-        PostQuitMessage(0);
-        appState.isRunning = false;
-      }
-      if (wParam == 'D') {
-        Item* itemToSelect = GetItemToSelectAfterDeleting(selectedItem);
-        DeleteItem(selectedItem);
-        UpdateSelection(itemToSelect);
-        FindPositionBasedOnDesiredOffset();
-      }
-
-      if (wParam == VK_OEM_PLUS && IsKeyPressed(VK_CONTROL)) {
-        fontSize++;
-        UpdateFontSize();
-      }
-      if (wParam == VK_OEM_MINUS && IsKeyPressed(VK_CONTROL)) {
-        fontSize--;
-        UpdateFontSize();
-      }
-      if (wParam == 'I' && IsKeyPressed(VK_SHIFT)) {
-        UpdateCursorPosWithDesiredOffset(0);
-        EnterInsertMode();
-      } else if (wParam == 'I') {
-        EnterInsertMode();
-      }
-      if (wParam == 'O') {
-        Item* newItem = CreateEmptyItem(EMPTY_ITEM_TEXT_CAPACITY);
-        Item* newParent = selectedItem->parent;
-
-        i32 index = IndexOf(selectedItem);
-        i32 pos = index + 1;
-        if (IsKeyPressed(VK_SHIFT)) {
-          pos = index;
-        }
-        if (IsKeyPressed(VK_CONTROL)) {
-          pos = 0;
-          newParent = selectedItem;
-          newParent->isOpen = Open;
-        }
-
-        InsertChildAt(newParent, newItem, pos);
-        selectedItem = newItem;
-        UpdateCursorPosWithDesiredOffset(0);
-        EnterInsertMode();
-      }
-
-      if (wParam == 'L' && IsKeyPressed(VK_CONTROL)) {
-        if (selectedItem->childrenLen > 0) {
-
-          selectedItem->isOpen = Open;
-          UpdateSelection(selectedItem->children[0]);
-        }
-      } else if (wParam == 'L' && IsKeyPressed(VK_MENU)) {
-        MoveItemRight(selectedItem);
-      } else if (wParam == 'L') {
-        UpdateCursorPosWithDesiredOffset(cursor.pos + 1);
-      }
-
-      if (wParam == 'H' && IsKeyPressed(VK_CONTROL)) {
-        if (!IsRoot(selectedItem->parent))
-          UpdateSelection(selectedItem->parent);
-
-      } else if (wParam == 'H' && IsKeyPressed(VK_MENU)) {
-        MoveItemLeft(selectedItem);
-      } else if (wParam == 'H') {
-        UpdateCursorPosWithDesiredOffset(cursor.pos - 1);
-      }
-
-      if (wParam == 'J' && IsKeyPressed(VK_CONTROL)) {
-        UpdateSelection(NextSibling(selectedItem));
-      } else if (wParam == 'J' && IsKeyPressed(VK_MENU)) {
-        MoveItemDown(selectedItem);
-      } else if (wParam == 'J') {
-        UpdateSelection(GetItemBelow(selectedItem));
-        FindPositionBasedOnDesiredOffset();
-      }
-
-      if (wParam == 'K' && IsKeyPressed(VK_CONTROL))
-        UpdateSelection(PrevSibling(selectedItem));
-      else if (wParam == 'K' && IsKeyPressed(VK_MENU)) {
-        MoveItemUp(selectedItem);
-      } else if (wParam == 'K') {
-        UpdateSelection(GetItemAbove(selectedItem));
-        FindPositionBasedOnDesiredOffset();
-      }
-
-      if (wParam == 'X') {
-        if (cursor.pos < selectedItem->textLen) {
-          RemoveChars(selectedItem, cursor.pos, cursor.pos);
-        }
-      }
       if (wParam == VK_BACK) {
         if (cursor.pos > 0) {
           RemoveChars(selectedItem, cursor.pos - 1, cursor.pos - 1);
           UpdateCursorPosWithDesiredOffset(cursor.pos - 1);
         }
       }
+
+      if (wParam == VK_RETURN)
+        HandleEnter();
+
+      if (wParam == VK_F11) {
+        appState.isFullscreen = !appState.isFullscreen;
+        SetFullscreen(win, appState.isFullscreen);
+      }
+
+      if (wParam == 'Q') {
+        PostQuitMessage(0);
+        appState.isRunning = false;
+      }
+
       if (wParam == 'S' && IsKeyPressed(VK_CONTROL)) {
         i32 capacity = MB(2);
         void* buffer = valloc(capacity);
@@ -358,21 +241,6 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         SerializeRoot(root, buffer, &bytesWritten, capacity);
         WriteMyFile(filePath, (char*)buffer, bytesWritten);
         vfree(buffer);
-      } else if (wParam == 'S') {
-        if (!selectedItem->isOpen && selectedItem->childrenLen > 0)
-          selectedItem->isOpen = Open;
-        else if (selectedItem->childrenLen > 0) {
-          selectedItem = selectedItem->children[0];
-        }
-      }
-      if (wParam == 'A' && IsKeyPressed(VK_SHIFT)) {
-        UpdateCursorPosWithDesiredOffset(selectedItem->textLen);
-        EnterInsertMode();
-      } else if (wParam == 'A') {
-        if (selectedItem->isOpen)
-          selectedItem->isOpen = Closed;
-        else if (!IsRoot(selectedItem->parent))
-          selectedItem = selectedItem->parent;
       }
     }
     break;
@@ -525,28 +393,29 @@ void AppendCommandBuffer(CharBuffer& buff, CommandBuffer& commandBuffer) {
   for (i32 i = 0; i < commandBuffer.len; i++) {
     u32 code = commandBuffer.keys[i].code;
     u32 flags = commandBuffer.keys[i].flags;
-    if (flags & Ctrl || flags & Alt || flags & Win)
+    if (flags & CtrlKey || flags & AltKey || flags & WinKey)
       Append(&commandFormatted, "<");
-    if (flags & Ctrl)
+    if (flags & CtrlKey)
       Append(&commandFormatted, "C");
-    if (flags & Alt)
+    if (flags & AltKey)
       Append(&commandFormatted, "A");
-    if (flags & Win)
+    if (flags & WinKey)
       Append(&commandFormatted, "W");
 
-    if (flags & Ctrl || flags & Alt || flags & Win)
+    if (flags & CtrlKey || flags & AltKey || flags & WinKey)
       Append(&commandFormatted, "-");
 
     if (code == VK_ESCAPE)
       Append(&commandFormatted, "Esc");
-    else
-      Append(&commandFormatted, (char)code);
+    else {
+      if (code == ' ')
+        Append(&commandFormatted, '_');
+      else
+        Append(&commandFormatted, (char)code);
+    }
 
-    if (flags & Ctrl || flags & Alt || flags & Win)
+    if (flags & CtrlKey || flags & AltKey || flags & WinKey)
       Append(&commandFormatted, ">");
-
-    if (i != commandBuffer.len - 1)
-      Append(&commandFormatted, " ");
   }
 
   Append(&buff, commandFormatted.content);
@@ -628,6 +497,7 @@ extern "C" void WinMainCRTStartup() {
   appState.isRunning = true;
 
   Init();
+  InitActions();
   while (appState.isRunning) {
     MSG msg;
 

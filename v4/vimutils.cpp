@@ -1,55 +1,5 @@
 #pragma once
-#include "..//win32.cpp"
 #include "item.cpp"
-
-enum KeyFlags : u8 { Ctrl = 1, Alt = 2, Win = 4 };
-
-struct Key {
-  u8 flags;
-  u32 code;
-};
-
-struct CommandBuffer {
-  i32 len;
-  Key keys[255];
-};
-
-CommandBuffer command = {};
-CommandBuffer lastCommand = {};
-
-void ClearCommand() {
-  memcpy(&lastCommand, &command, sizeof(CommandBuffer));
-  command.len = 0;
-}
-
-void HandleCommand() {
-  if (command.len > 0) {
-    if (command.keys[command.len - 1].code == VK_ESCAPE)
-      ClearCommand();
-  }
-}
-
-// mode, selectedItem, cursor
-void AppendChar(u32 ch) {
-  command.keys[command.len].code = ch;
-  if (IsKeyPressed(VK_CONTROL))
-    command.keys[command.len].flags |= Ctrl;
-  if (IsKeyPressed(VK_MENU))
-    command.keys[command.len].flags |= Alt;
-  if (IsKeyPressed(VK_LWIN))
-    command.keys[command.len].flags |= Win;
-
-  command.len++;
-
-  HandleCommand();
-}
-
-//
-//
-//
-//
-//
-//
 
 bool IsLetter(char ch) {
   return (ch >= L'a' && ch <= L'z') || (ch >= L'A' && ch <= L'Z');
@@ -105,7 +55,6 @@ i32 JumpWordForwardIgnorePunctuation(Item* item, i32 from) {
 
 i32 JumpWordBackwardIgnorePunctuation(Item* item, i32 from) {
   c8* text = item->text;
-  i32 textLen = item->textLen;
   i32 cursor = Max(from - 1, 0);
 
   if (IsWhitespace(text[cursor])) {
