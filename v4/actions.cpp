@@ -27,8 +27,10 @@ void EnterInsertMode();
 void FindPositionBasedOnDesiredOffset();
 
 void UpdateSelection(Item* item) {
-  if (item)
+  if (item) {
     selectedItem = item;
+    FindPositionBasedOnDesiredOffset();
+  }
 }
 
 void MoveToStart() {
@@ -116,12 +118,10 @@ void CreateItemInside() {
 
 void GoDown() {
   UpdateSelection(GetItemBelow(selectedItem));
-  FindPositionBasedOnDesiredOffset();
 }
 
 void GoUp() {
   UpdateSelection(GetItemAbove(selectedItem));
-  FindPositionBasedOnDesiredOffset();
 }
 
 void GoLeft() {
@@ -134,18 +134,15 @@ void GoRight() {
 
 void JumpDown() {
   UpdateSelection(NextSibling(selectedItem));
-  FindPositionBasedOnDesiredOffset();
 }
 
 void JumpUp() {
   UpdateSelection(PrevSibling(selectedItem));
-  FindPositionBasedOnDesiredOffset();
 }
 
 void JumpLeft() {
   if (!IsRoot(selectedItem->parent)) {
     UpdateSelection(selectedItem->parent);
-    FindPositionBasedOnDesiredOffset();
   }
 }
 
@@ -153,7 +150,6 @@ void JumpRight() {
   if (selectedItem->childrenLen > 0) {
     selectedItem->isOpen = Open;
     UpdateSelection(selectedItem->children[0]);
-    FindPositionBasedOnDesiredOffset();
   }
 }
 
@@ -177,7 +173,7 @@ void OpenSelected() {
   if (!selectedItem->isOpen && selectedItem->childrenLen > 0)
     selectedItem->isOpen = Open;
   else if (selectedItem->childrenLen > 0) {
-    selectedItem = selectedItem->children[0];
+    UpdateSelection(selectedItem->children[0]);
   }
 }
 
@@ -185,7 +181,7 @@ void CloseSelected() {
   if (selectedItem->isOpen)
     selectedItem->isOpen = Closed;
   else if (!IsRoot(selectedItem->parent))
-    selectedItem = selectedItem->parent;
+    UpdateSelection(selectedItem->parent);
 }
 
 void RemoveCurrentChar() {
@@ -198,7 +194,6 @@ void DeleteCurrentItem() {
   Item* itemToSelect = GetItemToSelectAfterDeleting(selectedItem);
   DeleteItem(selectedItem);
   UpdateSelection(itemToSelect);
-  FindPositionBasedOnDesiredOffset();
 }
 
 void SelectLastItem() {
@@ -207,12 +202,10 @@ void SelectLastItem() {
     mostNested = mostNested->children[mostNested->childrenLen - 1];
   }
   UpdateSelection(mostNested);
-  FindPositionBasedOnDesiredOffset();
 }
 
 void SelectFirstItem() {
   UpdateSelection(root->children[0]);
-  FindPositionBasedOnDesiredOffset();
 }
 
 void InitActions() {
