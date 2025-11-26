@@ -20,16 +20,16 @@ Item* root;
 Item* selectedItem;
 //
 
-void UpdateSelection(Item* item) {
-  if (item)
-    selectedItem = item;
-}
-
 // these are the functions from the main which I don;t want to bring here
 void UpdateCursorPosWithDesiredOffset(i32 pos);
 void UpdateFontSize();
 void EnterInsertMode();
 void FindPositionBasedOnDesiredOffset();
+
+void UpdateSelection(Item* item) {
+  if (item)
+    selectedItem = item;
+}
 
 void MoveToStart() {
   UpdateCursorPosWithDesiredOffset(0);
@@ -134,21 +134,26 @@ void GoRight() {
 
 void JumpDown() {
   UpdateSelection(NextSibling(selectedItem));
+  FindPositionBasedOnDesiredOffset();
 }
 
 void JumpUp() {
   UpdateSelection(PrevSibling(selectedItem));
+  FindPositionBasedOnDesiredOffset();
 }
 
 void JumpLeft() {
-  if (!IsRoot(selectedItem->parent))
+  if (!IsRoot(selectedItem->parent)) {
     UpdateSelection(selectedItem->parent);
+    FindPositionBasedOnDesiredOffset();
+  }
 }
 
 void JumpRight() {
   if (selectedItem->childrenLen > 0) {
     selectedItem->isOpen = Open;
     UpdateSelection(selectedItem->children[0]);
+    FindPositionBasedOnDesiredOffset();
   }
 }
 
@@ -196,6 +201,20 @@ void DeleteCurrentItem() {
   FindPositionBasedOnDesiredOffset();
 }
 
+void SelectLastItem() {
+  Item* mostNested = root;
+  while (mostNested->isOpen) {
+    mostNested = mostNested->children[mostNested->childrenLen - 1];
+  }
+  UpdateSelection(mostNested);
+  FindPositionBasedOnDesiredOffset();
+}
+
+void SelectFirstItem() {
+  UpdateSelection(root->children[0]);
+  FindPositionBasedOnDesiredOffset();
+}
+
 void InitActions() {
   i32 i = 0;
   commands[i++] = {Key("w"), JumpWordForwardA};
@@ -229,6 +248,9 @@ void InitActions() {
   commands[i++] = {Alt("k"), SwapUp};
   commands[i++] = {Alt("h"), SwapLeft};
   commands[i++] = {Alt("l"), SwapRight};
+
+  commands[i++] = {Key("G"), SelectFirstItem};
+  commands[i++] = {Key("gg"), SelectLastItem};
 
   commands[i++] = {Key("x"), RemoveCurrentChar};
   commands[i++] = {Key("di"), DeleteCurrentItem};

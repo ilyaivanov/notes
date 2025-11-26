@@ -7,7 +7,7 @@
 #include "item.cpp"
 #include "actions.cpp"
 
-#define filePath L"foo.txt"
+#define filePath L"sample.txt"
 i32 step = 20;
 
 HWND win;
