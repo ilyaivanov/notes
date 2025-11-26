@@ -468,8 +468,12 @@ void DrawApp() {
   AppendCommandBuffer(buff, lastCommand);
 
   v3 color = {0.8, 0.8, 0.8};
-  SetColors(color, bg);
-  DrawTextW(appState.dc, buff.content, buff.len, &footerRect, DT_NOPREFIX | DT_BOTTOM | DT_RIGHT);
+  SetColors(white, bg);
+  footerRect.right -= 100;
+
+  const wchar_t* t = L"так 𝛑";
+  DrawTextW(appState.dc, t, -1, &footerRect, DT_NOPREFIX | DT_BOTTOM | DT_RIGHT);
+
   PaintWindow();
 }
 
@@ -477,6 +481,7 @@ extern "C" void WinMainCRTStartup() {
   SetProcessDPIAware();
   // InitAnimations();
   win = OpenWindow(OnEvent);
+  window = win;
   appState.window = win;
 
 #ifdef FULLSCREEN

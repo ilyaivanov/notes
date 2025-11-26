@@ -542,6 +542,31 @@ bool EndsWith(char* str, i32 len, char* substr) {
   return false;
 }
 
+i32 IndexOf(char* str, i32 len, char* substr) {
+  i32 substrLen = strlen(substr);
+  i32 currentSubstr = 0;
+  for (i32 i = 0; i < len; i++) {
+    if (str[i] == substr[currentSubstr]) {
+      currentSubstr++;
+      if (currentSubstr == substrLen)
+        return i;
+    } else {
+      currentSubstr = 0;
+    }
+  }
+
+  return -1;
+}
+
+i32 IndexOf(char* str, i32 len, char ch) {
+  for (i32 i = 0; i < len; i++) {
+    if (str[i] == ch)
+      return i;
+  }
+
+  return -1;
+}
+
 i32 wstrlen(c16* str) {
   i32 res = 0;
   while (str[res] != L'\0')
@@ -558,15 +583,15 @@ extern "C" void* memcpy(void* dst, const void* src, size_t n) {
   return dst;
 }
 
-c16* ClipboardPaste(HWND window, i32* size) {
+c8* ClipboardPaste(HWND window, i32* size) {
   OpenClipboard(window);
   HANDLE hClipboardData = GetClipboardData(CF_TEXT); // CF_UNICODETEXT
-  c16* pchData = (c16*)GlobalLock(hClipboardData);
-  c16* res = NULL;
+  c8* pchData = (c8*)GlobalLock(hClipboardData);
+  c8* res = NULL;
   if (pchData) {
-    i32 len = wstrlen(pchData);
-    res = (c16*)valloc(len * sizeof(c16));
-    memcpy(res, pchData, len * sizeof(c16));
+    i32 len = strlen(pchData);
+    res = (c8*)valloc(len * sizeof(c8));
+    memcpy(res, pchData, len * sizeof(c8));
     GlobalUnlock(hClipboardData);
     *size = len;
   } else {
@@ -577,22 +602,22 @@ c16* ClipboardPaste(HWND window, i32* size) {
 }
 
 // https://www.codeproject.com/Articles/2242/Using-the-Clipboard-Part-I-Transferring-Simple-Tex
-void ClipboardCopy(HWND window, wchar_t* text, i32 len) {
+void ClipboardCopy(HWND window, char* text, i32 len) {
   if (OpenClipboard(window)) {
     EmptyClipboard();
 
-    HGLOBAL hClipboardData = GlobalAlloc(GMEM_DDESHARE, (len + 1) * sizeof(c16));
+    HGLOBAL hClipboardData = GlobalAlloc(GMEM_DDESHARE, (len + 1) * sizeof(char));
 
-    c16* pchData = (c16*)GlobalLock(hClipboardData);
+    char* pchData = (char*)GlobalLock(hClipboardData);
 
     for (i32 i = 0; i < len; i++) {
       pchData[i] = text[i];
     }
-    pchData[len] = L'\0';
+    pchData[len] = '\0';
 
     GlobalUnlock(hClipboardData);
 
-    SetClipboardData(CF_UNICODETEXT, hClipboardData);
+    SetClipboardData(CF_TEXT, hClipboardData);
 
     CloseClipboard();
   }

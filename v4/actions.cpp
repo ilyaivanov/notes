@@ -13,6 +13,7 @@ struct Cursor {
   i32 desiredOffset;
 };
 
+HWND window;
 Mode mode = Normal;
 i32 fontSize;
 Cursor cursor;
@@ -208,6 +209,58 @@ void SelectFirstItem() {
   UpdateSelection(root->children[0]);
 }
 
+void CopyLine() {
+  ClipboardCopy(window, selectedItem->text, selectedItem->textLen);
+}
+
+void CopyItem() {
+  i32 cap = MB(2);
+  i32 bytesWritten;
+  char* space = (char*)valloc(cap);
+  SerializeRoot(selectedItem, space, &bytesWritten, cap);
+
+  ClipboardCopy(window, space, bytesWritten);
+  vfree(space);
+}
+
+void Paste(bool isAfter) {
+  i32 size;
+  c8* text = ClipboardPaste(window, &size);
+  bool hasNewLine = IndexOf(text, size, '\n') >= 0;
+
+  if (hasNewLine) {
+    Item* tempRoot = ParseFileIntoRoot(text, size);
+
+    i32 index = IndexOf(selectedItem);
+    i32 pos = index;
+    if (isAfter)
+      pos++;
+
+    Item* parent = selectedItem->parent;
+
+    for (i32 i = 0; i < tempRoot->childrenLen; i++) {
+      InsertChildAt(parent, tempRoot->children[0], pos);
+      pos++;
+    }
+
+    DeleteItemWithoutChildren(tempRoot);
+    UpdateSelection(parent->children[pos]);
+
+  } else {
+    InsertCharsAt(selectedItem, cursor.pos, text, size);
+    UpdateCursorPosWithDesiredOffset(cursor.pos + size);
+  }
+  vfree(text);
+}
+
+void PasteAfter() {
+  Paste(true);
+}
+
+void PasteBefore() {
+  Paste(false);
+}
+
 void InitActions() {
   i32 i = 0;
   commands[i++] = {Key("w"), JumpWordForwardA};
@@ -250,6 +303,11 @@ void InitActions() {
 
   commands[i++] = {Key("a"), CloseSelected};
   commands[i++] = {Key("s"), OpenSelected};
+
+  commands[i++] = {Key("yl"), CopyLine};
+  commands[i++] = {Key("yi"), CopyItem};
+  commands[i++] = {Key("P"), PasteBefore};
+  commands[i++] = {Key("p"), PasteAfter};
 
   commandsLen = i;
 }

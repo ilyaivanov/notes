@@ -58,11 +58,13 @@ void InsertChildAt(Item* parent, Item* child, i32 at) {
   parent->childrenLen++;
 }
 
-Item* CreateEmptyItem(i32 capacity) {
+Item* CreateEmptyItem(i32 textCapacity) {
   Item* res = (Item*)valloc(sizeof(Item));
-  res->textCapacity = capacity;
+  res->textCapacity = textCapacity;
   res->textLen = 0;
-  res->text = (char*)valloc(res->textCapacity * sizeof(char));
+  if (res->textCapacity > 0)
+    res->text = (char*)valloc(res->textCapacity * sizeof(char));
+
   return res;
 }
 
@@ -161,6 +163,14 @@ Item* GetItemToSelectAfterDeleting(Item* item) {
   return itemToSelectNext;
 }
 
+void DeleteItemWithoutChildren(Item* item) {
+  if (item->children)
+    vfree(item->children);
+  if (item->text)
+    vfree(item->text);
+  vfree(item);
+}
+
 void DeleteItem(Item* item) {
   Item* parent = item->parent;
   i32 index = IndexOf(item);
@@ -177,10 +187,8 @@ void DeleteItem(Item* item) {
     for (i32 i = itemToRemove->childrenLen - 1; i >= 0; i--) {
       stack[stackLen++] = itemToRemove->children[i];
     }
+    DeleteItemWithoutChildren(itemToRemove);
     // TODO: check for memory leaks
-    vfree(itemToRemove->children);
-    vfree(itemToRemove->text);
-    vfree(itemToRemove);
   }
 }
 
@@ -349,7 +357,11 @@ void SerializeRoot(Item* root, void* space, i32* bytesWritten, i32 capacity) {
   StackEntry stack[200];
   i32 stackLen = 0;
 
-  stack[stackLen++] = {root, -1};
+  i32 startLevel = -1;
+  if (!IsRoot(root))
+    startLevel = 0;
+
+  stack[stackLen++] = {root, startLevel};
 
   char* text = (char*)space;
   i32 len = 0;
