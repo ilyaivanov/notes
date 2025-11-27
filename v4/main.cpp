@@ -163,6 +163,11 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
     else {
       if (mode == Normal) {
         AppendChar(wParam);
+
+        // TODO: this is hacky, but my actions don't know if they where fired from WM_CHAR or
+        // WM_KEYDOWN event. thus always settings ignoreNextCharEvent if entering insert mode. I
+        // don't want that in case of WM_CHAR event
+        ignoreNextCharEvent = false;
       } else if (mode == Insert) {
         if (wParam == VK_ESCAPE) {
           mode = Normal;
