@@ -14,6 +14,4 @@ set Libs=user32.lib gdi32.lib kernel32.lib dwmapi.lib shell32.lib opengl32.lib
 cl %CommonCompilerOptions% %CompilerOptionsProd% v4\main.cpp /link %LinkerOptions% %Libs% 
 
 
-pushd build
-call main.exe
-popd
+copy build\main.exe main.exe
