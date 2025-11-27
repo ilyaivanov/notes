@@ -1,17 +1,33 @@
 Note system 
   Done
     Scroll of the items
-  Bugs
+    zt and zb
+    Y C and D
+  Bugs /c
+    <C-w> in insert mode doesn't work wne cursor placed on / or _
   Motions
-    i I A
+    i I A C D Y
     I can't use di or ci where i is item, since it break diw or cib. Thus i will use dn cn where n is node
+    yn dn - removes or copies a node
+    yl dl cl - copy\remove\replace line (title of the selectedItem)
+    Actions - d y c gu gU
+    Motions - w W b B 0 $ l n 
+    Text objects (a i) - w W b B [ ' " s
+    5 * (8 + 8 * 2) = 120 that's how many methods will I have implementing this in naive way
   Backlog
     Search
     Splits
-    When moving item up or down, check if it can be placed into a sibling (workflowy does this)
+    When moving item up or down, check if it can be placed into a sibling (workflowy does this) /c
+      For example for this case
+      First
+      Second
+        Sub second
+      Moving Sub second up would place it as child of first
     Clipboard buffer history (even when not active)
+    Add r and R
+    Embedded calculator
     Motions to implement
-      Y D C cw c0 c$ cl ci
+      cw c0 c$ cl ci
       f F df( cf)
       cib ciB dab dib
     Draw children lines
