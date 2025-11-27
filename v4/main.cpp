@@ -7,11 +7,10 @@
 #include "item.cpp"
 #include "actions.cpp"
 
-#define filePath L"sample.txt"
+#define filePath L"foo.txt"
 i32 step = 20;
 
 HWND win;
-AppState appState;
 HFONT font;
 #define initialFontSize 14
 
@@ -36,7 +35,7 @@ v3 cursorTextColor = {0.05, 0.05, 0.05};
 v3 selectedBg = {0, 0, 1};
 v3 selectedText = {0.05, 0.05, 0.05};
 
-v2 padding = {20, 5};
+f32 scrollbarWidth = 10;
 
 HBITMAP bitmap;
 BITMAPINFO bitmapInfo;
@@ -181,6 +180,11 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       }
     }
     break;
+
+  case WM_LAUNCH_URL_UNDER_CURSOR:
+    OpenUrlUnderCursor();
+    break;
+
   case WM_SYSCOMMAND:
     if (wParam == SC_KEYMENU)
       return 0;
@@ -194,6 +198,10 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
       if (wParam == 'W' && IsKeyPressed(VK_CONTROL)) {
         ignoreNextCharEvent = true;
         RemoveWord();
+      }
+      if (wParam == 'V' && IsKeyPressed(VK_CONTROL)) {
+        Paste(true);
+        ignoreNextCharEvent = true;
       }
     }
     if (mode == Normal) {
@@ -326,7 +334,7 @@ f32 GetFontHeight() {
 }
 
 void PaintSplit(Item* root, Rect rect) {
-  v2 runningPos = vec2(rect.x, rect.y) + padding;
+  v2 runningPos = vec2(rect.x, rect.y) + pagePadding;
 
   StackEntry stack[200];
   int stackLen = 0;
@@ -344,28 +352,29 @@ void PaintSplit(Item* root, Rect rect) {
       cursorColorToUse = cursorInsertColor;
     }
 
+    f32 x = runningPos.x + entry.level * step;
+    i32 y = (i32)round(runningPos.y - scrollOffset.current);
     if (entry.level >= 0) {
       if (entry.item == selectedItem) {
-        PaintRect(rect.x, runningPos.y, rect.width, GetFontHeight(), lineColorToUse);
+        PaintRect(rect.x, y, rect.width, GetFontHeight(), lineColorToUse);
         SetColors(white, lineColorToUse);
       } else {
         SetColors(white, bg);
       }
 
       if (isClosed) {
-        PaintRect(rect.x, runningPos.y, 4, GetFontHeight(), red);
+        PaintRect(rect.x, y, 4, GetFontHeight(), red);
       }
 
-      f32 x = runningPos.x + entry.level * step;
       char* text = entry.item->text;
       i32 len = entry.item->textLen;
       HDC dc = appState.dc;
-      RECT re = {(i32)x, (i32)runningPos.y, i32(rect.x + rect.width), i32(rect.y + rect.height)};
+      RECT re = {(i32)x, (i32)y, i32(rect.x + rect.width), i32(rect.y + rect.height)};
       DrawTextA(dc, text, len, &re, DT_NOPREFIX | DT_LEFT | DT_TOP);
 
       if (entry.item == selectedItem) {
         i32 cursorX = x + SelectedItemTextWidth(cursor.pos);
-        PaintRect(cursorX, runningPos.y, 1, GetFontHeight(), cursorColorToUse);
+        PaintRect(cursorX, y, 1, GetFontHeight(), cursorColorToUse);
       }
       runningPos.y += GetFontHeight();
     }
@@ -375,6 +384,19 @@ void PaintSplit(Item* root, Rect rect) {
         stack[stackLen++] = {entry.item->children[i], entry.level + 1};
       }
     }
+  }
+
+  pageHeight = runningPos.y + pagePadding.y;
+
+  if (pageHeight > rect.height) {
+    f32 scrollbarHeight = rect.height * rect.height / pageHeight;
+    f32 maxOffset = pageHeight - rect.height;
+    f32 maxScrollY = rect.height - scrollbarHeight;
+    f32 scrollY = lerp(0, maxScrollY, scrollOffset.current / maxOffset);
+
+    Rect scrollbar = {rect.x + rect.width - scrollbarWidth, scrollY, scrollbarWidth,
+                      scrollbarHeight};
+    PaintRect(scrollbar, vec3(0.3, 0.3, 0.3));
   }
 }
 
@@ -441,12 +463,15 @@ void DrawApp() {
   // PaintRect(middle.x + middle.width - 1, middle.y, 2, middle.height, line);
 
   RECT footerRect = windowRect;
-  footerRect.top = windowRect.bottom - 200;
-  footerRect.right -= 10;
+  footerRect.top = windowRect.bottom - 220;
+  footerRect.right -= 10 + scrollbarWidth;
   footerRect.bottom -= 5;
 
   CharBuffer buff = {};
-  Append(&buff, L"Desired: ");
+  Append(&buff, L"FPS: ");
+  Append(&buff, (i32)round(1000.0f / appState.lastFrameTimeMs));
+
+  Append(&buff, L"\nDesired: ");
   Append(&buff, cursor.desiredOffset);
 
   Append(&buff, L"\nActual: ");
@@ -468,11 +493,16 @@ void DrawApp() {
   AppendCommandBuffer(buff, lastCommand);
 
   v3 color = {0.8, 0.8, 0.8};
-  SetColors(white, bg);
-  footerRect.right -= 100;
+  SetColors(color, bg);
 
-  const wchar_t* t = L"так 𝛑";
-  DrawTextW(appState.dc, t, -1, &footerRect, DT_NOPREFIX | DT_BOTTOM | DT_RIGHT);
+  i32 height = DrawTextW(appState.dc, buff.content, buff.len, &footerRect,
+                         DT_NOPREFIX | DT_BOTTOM | DT_RIGHT);
+
+  if (errorMessage[0] != '\0') {
+    footerRect.top += height;
+    SetColors(vec3(0.8, 0.2, 0.2), bg);
+    DrawTextA(appState.dc, errorMessage, -1, &footerRect, DT_NOPREFIX | DT_BOTTOM | DT_RIGHT);
+  }
 
   PaintWindow();
 }
@@ -481,7 +511,6 @@ extern "C" void WinMainCRTStartup() {
   SetProcessDPIAware();
   // InitAnimations();
   win = OpenWindow(OnEvent);
-  window = win;
   appState.window = win;
 
 #ifdef FULLSCREEN
@@ -503,6 +532,7 @@ extern "C" void WinMainCRTStartup() {
 
   Init();
   InitActions();
+  InitAnimations();
   while (appState.isRunning) {
     MSG msg;
 
@@ -510,9 +540,11 @@ extern "C" void WinMainCRTStartup() {
       TranslateMessage(&msg);
       DispatchMessage(&msg);
     }
-    DrawApp();
 
-    // Sleep(10);
+    DrawApp();
+    UpdateSpring(&scrollOffset, appState.lastFrameTimeMs / 1000.0f);
+
+    // Sleep(2);
     i64 frameEnd = GetPerfCounter();
     appState.lastFrameTimeMs = (f32)(frameEnd - frameStart) / (f32)freq * 1000.0f;
     frameStart = frameEnd;

@@ -1,13 +1,13 @@
 @echo off
 
-set libs=-lkernel32 -luser32 -lgdi32 -ldwmapi -lwinmm -lopengl32
+set libs=-lkernel32 -luser32 -lgdi32 -ldwmapi -lwinmm -lopengl32 -lshell32
 set linker=-Xlinker /NODEFAULTLIB -Xlinker /entry:WinMainCRTStartup -Xlinker /subsystem:windows
 REM set linker=-Xlinker /subsystem:windows
 
 set common=-Wall -Wextra
 
-rem set conf=-O3 
- set conf=-g
+REM set conf=-O3 
+set conf=-g
 
 if not exist build mkdir build
 

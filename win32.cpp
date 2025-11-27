@@ -527,6 +527,22 @@ i32 strlen(char* str) {
   return res;
 }
 
+i32 IndexOf(char* str, i32 len, char* substr) {
+  i32 substrLen = strlen(substr);
+  i32 currentSubstr = 0;
+  for (i32 i = 0; i < len; i++) {
+    if (str[i] == substr[currentSubstr]) {
+      currentSubstr++;
+      if (currentSubstr == substrLen)
+        return i + 1 - substrLen;
+    } else {
+      currentSubstr = 0;
+    }
+  }
+
+  return -1;
+}
+
 bool EndsWith(char* str, i32 len, char* substr) {
   i32 substrLen = strlen(substr);
   i32 currentSubstr = substrLen - 1;
@@ -542,20 +558,8 @@ bool EndsWith(char* str, i32 len, char* substr) {
   return false;
 }
 
-i32 IndexOf(char* str, i32 len, char* substr) {
-  i32 substrLen = strlen(substr);
-  i32 currentSubstr = 0;
-  for (i32 i = 0; i < len; i++) {
-    if (str[i] == substr[currentSubstr]) {
-      currentSubstr++;
-      if (currentSubstr == substrLen)
-        return i;
-    } else {
-      currentSubstr = 0;
-    }
-  }
-
-  return -1;
+i32 StartsWith(char* str, i32 len, char* substr) {
+  return IndexOf(str, len, substr) == 0;
 }
 
 i32 IndexOf(char* str, i32 len, char ch) {
