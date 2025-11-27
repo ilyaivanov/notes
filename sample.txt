@@ -1,18 +1,24 @@
 Note system 
   Done
-    Rewrite all actions in a separate actions.cpp file with shortcuts as data	
-    G and gg actions
-    Working with clipboard (copy\paste) /c
-      Clipboard history
-      Clipboard for items (treat \n as new item)
+    Scroll of the items
   Bugs
+  Motions
+    i I A
+    I can't use di or ci where i is item, since it break diw or cib. Thus i will use dn cn where n is node
   Backlog
+    Search
+    Splits
+    When moving item up or down, check if it can be placed into a sibling (workflowy does this)
+    Clipboard buffer history (even when not active)
+    Motions to implement
+      Y D C cw c0 c$ cl ci
+      f F df( cf)
+      cib ciB dab dib
+    Draw children lines
     Undo\redo
     Text wrap
-    Scroll of the items
     Visual Line mode
     Remove item and replace it with the children
-    Search
     Implement .
     Unicode (UTF-16 support)
     Visual mode
@@ -28,9 +34,12 @@ Note system
       Board
       Gallery
       Miller list
-  Command Buffer /c
-    Allows to have . (repeat last command)
-    Allows to have actions consisting from multiple keys and combinators (ctrl, alt, win)
+  Features /c
+    Open links via gl /c
+      I need a win32 event on a window before opening a ShellExecute, otherwise I will recieve WM_CHAR on a call
+    Command Buffer /c
+      Allows to have . (repeat last command)
+      Allows to have actions consisting from multiple keys and combinators (ctrl, alt, win)
   Things to think about /c
     Multiple cursors
     Two hand navigation /c
@@ -38,6 +47,11 @@ Note system
       left hand makes structural motions (go to parent, sibling, etc)
     Cursor history
     Complex motions like dw ci etc
+    Unicode /c
+      DrawTextW expects the length of the string to be in codepoints, not actual characters
+      What I need to order to support Unicode with UTF-16 encoding
+        All text as c16
+        Cursor position is set it characters, not bytes or codepoints
   Logs /c
     21.11.25 /c
       Started the notes project
@@ -66,13 +80,159 @@ Note system
         w b W B
         Ability to have command buffer, so that I can handle di, ci, dw, etc
     25.11.25 - day off
-    26.11.25
+    26.11.25 /c
+      Done
+        Rewrite all actions in a separate actions.cpp file with shortcuts as data	
+        G and gg actions
+        Working with clipboard (copy\paste) /c
+          Clipboard history
+          Clipboard for items (treat \n as new item)
+        Open link with gl
+    27.11.25
 Courses\books /c
   Nature of Code
   	x86 modern assembly
+  Computer Graphics from Scratch
   Computer Enhance
   Learn OpenGL
   DirectX 12 Graphics
   Fundamentals of Backend Engineering
   Creative Coding with Canvas and WebGL
   JS on the Background
+Links file /c
+  Areas to focus /c
+    Notes editor
+    Code editor
+    Music player (aka better youtube)
+    Links editor
+  Audio  /c
+    Shapeforms complete collection https://www.shapeforms.com/shop/p/complete-collection-2021
+  Bezier Curves  /c
+    Interactive guide on bezie curves https://www.summbit.com/blog/bezier-curve-guide/#quadratic-bezier-curve-equation
+    Primer https://pomax.github.io/bezierinfo/
+  Design /c
+    https://friendkit.cssninja.io/#demos-section
+  Animations /c
+    Procedural Animations using Inverser Kinematics https://www.youtube.com/watch?v=NfuO66wsuRg
+    A simple procedural animation technique https://www.youtube.com/watch?v=qlfh_rv6khY
+    Pricedural Animations https://www.youtube.com/watch?v=KPoeNZZ6H4s
+    Motion Graphics 
+      https://vimeo.com/196706967
+      https://www.youtube.com/watch?v=qK4Re_ArS3Q
+    Beauty of bezier curves (nice animation overall) https://www.youtube.com/watch?v=aVwxzDHniEw
+    Motion Canvas is open source https://www.youtube.com/watch?v=H5GETOP7ivs
+  App /c
+    Workflowy like app for notes https://athensresearch.github.io/athens/#/
+    workflowy.com
+  Games  /c
+    https://armorgames.com/brain-creator-game/18636
+    https://armorgames.com/play/2675/phage-wars
+    https://armorgames.com/play/15936/beasts-battle
+    https://www.coolmathgames.com/0-curve-ball-3d
+    Steven Sausage Roll
+    Minimal shooter https://www.reddit.com/r/PlaydateConsole/comments/1o9pc36/this_is_how_it_feels_to_play_xorbius/
+    On terrafactor https://www.youtube.com/watch?v=mx0A7opQS6Q
+      https://www.reddit.com/r/theprimeagen/comments/1m2zipq/if_people_want_to_see_how_real_game_development/
+  Assets /c
+    https://kingbell.itch.io/pixel-sprite-mixer
+    https://deepdivegamestudio.itch.io/demon-sprite-pack
+    https://game-icons.net
+    https://itch.io/game-assets/top-rated/free/tag-dawnbringer/tag-pixel-art
+    https://www.vfxapprentice.com/blog/pixel-art-game-effects-animated
+    https://medievalmore.itch.io/
+    https://kevins-moms-house.itch.io/dungeonsprites
+    https://www.reddit.com/r/PixelArt/comments/1nt3q23/mockup_of_a_srpg_looking_for_feedback/
+    Nice gun animation https://www.reddit.com/r/PixelArt/comments/1ma3t8h/chunky_gun/
+    Minifantasy https://itch.io/s/45421/minifantasycomplete-bundle
+    Minifolks https://lyaseek.itch.io/minifundead
+    SCi-fi hero https://penusbmic.itch.io/sci-fi-hero-sprite
+  Boids /c
+    https://vojtatom.github.io/flocking.cpp
+    https://jtsorlinis.github.io/BoidsWebGPU
+  Health /c
+    https://www.youtube.com/@theanatomylab
+  Science /c
+    Official Science YouTuber Tier List https://www.youtube.com/watch?v=rODu2bWwtBM&t=301s
+  Info /c
+    Shapes lib for animation and pritimives https://acegikmo.com/shapes/
+  Vim  /c
+    Mastering quickfix list https://www.youtube.com/watch?v=aKG9uR6LhX4
+Tutorials  /c
+  FFmpeg asm lessons https://github.com/FFmpeg/asm-lessons/tree/main
+  Notes on Computer Enhance file:///C:/holy/editor/ce/notes/notes.html
+  MIT Introduction to Algorithms https://www.youtube.com/playlist?list=PLUl4u3cNGP63EdVPNLG3ToM6LaEUuStEY
+  React rendering deep dive https://blog.isquaredsoftware.com/2020/05/blogged-answers-a-mostly-complete-guide-to-react-rendering-behavior/#standard-render-behavior
+  Computer Graphics Programming Resources https://gist.github.com/notnotrobby/ceef71527b4f15869133ba7b397912e9
+  https://puzzleworld.org/PuzzlingWorld/chap02.htm?jr=1
+  https://craftpix.net/product/100-pixel-art-weapon-icons/
+  Crash Course channnel https://www.youtube.com/@crashcourse/playlists
+  Google Font Knowledge https://fonts.google.com/knowledge
+  Top 10 Programming Books-Dead Tree Edition https://www.youtube.com/watch?v=ZfcHwBKcNzY
+  Timothy Snyder: The Making of Modern Ukraine https://www.youtube.com/playlist?list=PLh9mgdi4rNewfxO7LhBoz_1Mx1MaO6sw_
+  A Brief look at Text Rendering https://www.youtube.com/watch?v=qcMuyHzhvpI
+  Navigating Digital Information Preview https://www.youtube.com/watch?v=L4aNmdL3Hr0&list=PL8dPuuaLjXtN07XYqqWSKpPrtNDiCHTzU
+  CPU clock https://www.youtube.com/watch?v=PVNAPWUxZ0g&list=PLPJhK-Wm22S7rXHDhAd6O_XY_3MK7pf46
+  C Programming and memory management https://www.youtube.com/watch?v=rJrd2QMVbGM
+  Collision Detection https://www.youtube.com/watch?v=KZJXb5AF6NM&list=PLYuY7qeQZcWaofUHmLQy2q7xG9eiSxk1W
+  Intel® Performance Counter Monitor - A Better Way to Measure CPU Utilization https://www.intel.com/content/www/us/en/developer/articles/tool/performance-counter-monitor.html
+  Rasterizer for fonts (as far as I understood) http://rastertragedy.com/RTRCh0.htm
+  Computer Graphics from Scratch https://nostarch.com/computer-graphics-scratch
+  Coding Challanges https://www.youtube.com/watch?v=KkyIDI6rQJI&list=PLRqwX-V7Uu6ZiZxtDDRCi6uhfTH4FilpH&index=5
+  Text Rendering hates you https://faultlore.com/blah/text-hates-you/
+  Cool into line\curve rasterization http://members.chello.at/%7Eeasyfilter/bresenham.html
+  Shader academy https://shaderacademy.com/explore
+  Cool tutorial for pixel graphics https://www.youtube.com/watch?v=KS837a-TFRc
+Navigating Digital Information /c
+  Intro
+    - Joke: two fish swim iin the ocean. WAlk to a old fish, old fish asks "how the ocea?". They swim further without the response. Then one fish asks another "what's ocean"
+    Author says he is not the wise fish. In addition he mentions that he is skeptical of any fish claiming to be wise here.
+    Internet is young and we are still figuring it out how to use it. 
+    Some key terms: 
+      misinformation - unintentionally incorrect information
+      disinformation - intentionally incorrect information
+      hate speech and propaganda have no definitions
+  Part 2 Facts and Fact checking
+    Ask yourself three questions 
+      Who is behind this information 
+      What is the evidence of their claims
+      What other sources say about their claims
+    They show a GREAT example of showing where is the horizon using two points. 
+    They claim
+      - Reading is a usefull skill - factual claim
+      - Reading X will make you a great person - opinion claim
+Music /c
+  Art of deep music https://www.youtube.com/watch?v=ZfoEUdAld2k
+  LoFi horse https://www.youtube.com/watch?v=_DwmKtbVFJ4
+  Chill Music https://www.youtube.com/watch?v=-sZqtdT-GVw
+  Stellardrone - Light Years https://www.youtube.com/watch?v=NDJn0SQehb4
+Examples I have /c
+  Youtube API player in a webpage (just html\js)
+  WebView2 simple webpage from C win32 
+  ASM compiling and printing hello world
+  Calling ASM function from the C
+Video /c
+  Attempting Deep Work - John Blow
+  About deltaTime in games https://www.youtube.com/watch?v=yGhfUcPjXuE
+  John Blow on 3D graphics https://www.youtube.com/watch?v=bGe-d09Nc_M
+  Easy web games with C https://www.youtube.com/watch?v=H_cnrhVYsK0
+  Game Audio Programming in C++ https://www.youtube.com/watch?v=M8Bd7uHH4Yg
+  When Your Game Is Bad But Your Optimisation Is Genius https://www.youtube.com/watch?v=5zlfJW2VGLM
+  Crash course on games https://www.youtube.com/watch?v=FVTNtlq3-44&list=PL8dPuuaLjXtPTrc_yg73RghJEOdobAplG
+  Why My Game Still Isn’t Finished After 5 Years  https://www.youtube.com/watch?v=M77WPPT5pZY
+  On vector art creation (example) https://www.reddit.com/r/gamedevscreens/comments/1mtufd4/what_do_you_think_about_our_new_angrymeter/
+  https://www.reddit.com/r/DestroyMyGame/comments/1n2uths/kleroo_a_dungeon_crawler_with_autobattles_and/
+  Casey on n+2 programmers https://www.youtube.com/watch?v=xt1KNDmOYqA
+  Bret victor https://www.youtube.com/watch?v=8pTEmbeENF4
+  Bret Victor Inventing on Principle https://www.youtube.com/watch?v=PUv66718DII
+  Simple Made Easy https://www.infoq.com/presentations/Simple-Made-Easy/
+  Latency Numbers for Devs https://www.youtube.com/watch?v=FqR5vESuKe0
+  Can we make this button fun to press https://www.youtube.com/watch?v=7L1B5YaxxoA
+  Nurclear Throne camera https://www.youtube.com/watch?v=etI-2dHeufc
+  Writing a text editor https://www.youtube.com/watch?v=2UY_Am-Q-oI&list=PLpM-Dvs8t0VZVshbPeHPculzFFBdQWIFu
+  Building Collision SImulation https://www.youtube.com/watch?v=eED4bSkYCB8
+  About Tetris Effect https://www.youtube.com/watch?v=7T7mg6JZZzg&ab_channel=NickRobinson
+  Dion Systems - The How And Why Of Reinventing The Wheel https://www.youtube.com/watch?v=GB_oTjVVgDc&t=881s
+  _____
+  We need to talk about Louis https://www.youtube.com/watch?v=93nMBtXVAfM
+  Computer Graphics from Scratch book review https://www.youtube.com/watch?v=rqXCCpQT8cM
+  Host crashes out https://www.youtube.com/watch?v=d7UErAZrwTw
