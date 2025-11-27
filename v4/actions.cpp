@@ -75,6 +75,14 @@ void CenterOnItem() {
   scrollOffset.target = ClampScroll(CursorY() - appState.size.y / 2.0f);
 }
 
+void BottomOnItem() {
+  scrollOffset.target = ClampScroll(CursorY() - appState.size.y + GetFontHeight());
+}
+
+void TopOnItem() {
+  scrollOffset.target = ClampScroll(CursorY());
+}
+
 void CenterOnItemIfOutOfBounds() {
   f32 cursorY = CursorY();
   if (cursorY < scrollOffset.target)
@@ -97,6 +105,15 @@ void MoveToStart() {
 
 void MoveToEnd() {
   UpdateCursorPosWithDesiredOffset(selectedItem->textLen);
+}
+
+void RemoveUntilEnd() {
+  RemoveChars(selectedItem, cursor.pos, selectedItem->textLen - 1);
+}
+
+void RemoveUntilEndAndEnterInsert() {
+  RemoveUntilEnd();
+  EnterInsertMode();
 }
 
 void JumpWordForwardA() {
@@ -422,6 +439,9 @@ void InitActions() {
   commands[i++] = {Key("I"), MoveToStartAndEnterInsertMode};
   commands[i++] = {Key("A"), MoveToEndAndEnterInsertMode};
 
+  commands[i++] = {Key("D"), RemoveUntilEnd};
+  commands[i++] = {Key("C"), RemoveUntilEndAndEnterInsert};
+
   commands[i++] = {Ctrl("-"), DecFontSize};
   commands[i++] = {Ctrl("="), IncFontSize};
   commands[i++] = {Key("o"), CreateItemAfter};
@@ -441,6 +461,8 @@ void InitActions() {
   commands[i++] = {Ctrl("d"), JumpHalfPageDown};
   commands[i++] = {Ctrl("u"), JumpHalfPageUp};
   commands[i++] = {Key("zz"), CenterOnItem};
+  commands[i++] = {Key("zt"), TopOnItem};
+  commands[i++] = {Key("zb"), BottomOnItem};
 
   commands[i++] = {Alt("j"), SwapDown};
   commands[i++] = {Alt("k"), SwapUp};
@@ -451,13 +473,13 @@ void InitActions() {
   commands[i++] = {Key("gg"), SelectLastItem};
 
   commands[i++] = {Key("x"), RemoveCurrentChar};
-  commands[i++] = {Key("di"), DeleteCurrentItem};
+  commands[i++] = {Key("dn"), DeleteCurrentItem};
 
   commands[i++] = {Key("a"), CloseSelected};
   commands[i++] = {Key("s"), OpenSelected};
 
   commands[i++] = {Key("yl"), CopyLine};
-  commands[i++] = {Key("yi"), CopyItem};
+  commands[i++] = {Key("yn"), CopyItem};
   commands[i++] = {Key("P"), PasteBefore};
   commands[i++] = {Key("p"), PasteAfter};
 
