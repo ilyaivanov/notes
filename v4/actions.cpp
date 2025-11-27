@@ -107,15 +107,6 @@ void MoveToEnd() {
   UpdateCursorPosWithDesiredOffset(selectedItem->textLen);
 }
 
-void RemoveUntilEnd() {
-  RemoveChars(selectedItem, cursor.pos, selectedItem->textLen - 1);
-}
-
-void RemoveUntilEndAndEnterInsert() {
-  RemoveUntilEnd();
-  EnterInsertMode();
-}
-
 void JumpWordForwardA() {
   UpdateCursorPosWithDesiredOffset(JumpWordForward(selectedItem, cursor.pos));
 }
@@ -139,6 +130,29 @@ void MoveToStartAndEnterInsertMode() {
 
 void MoveToEndAndEnterInsertMode() {
   MoveToEnd();
+  EnterInsertMode();
+}
+
+void RemoveUntilEnd() {
+  RemoveChars(selectedItem, cursor.pos, selectedItem->textLen - 1);
+}
+
+void ReplaceUntilEnd() {
+  RemoveUntilEnd();
+  EnterInsertMode();
+}
+
+void RemoveUntilStart() {
+  RemoveChars(selectedItem, 0, cursor.pos - 1);
+  UpdateCursorPosWithDesiredOffset(0);
+}
+
+void CopyUntilStart() {
+  ClipboardCopy(appState.window, selectedItem->text, cursor.pos);
+}
+
+void ReplaceUntilStart() {
+  RemoveUntilStart();
   EnterInsertMode();
 }
 
@@ -284,7 +298,7 @@ void SelectFirstItem() {
 }
 
 void CopyLine() {
-  ClipboardCopy(appState.window, selectedItem->text, selectedItem->textLen - 1);
+  ClipboardCopy(appState.window, selectedItem->text, selectedItem->textLen);
 }
 
 void CopyUntilEnd() {
@@ -444,10 +458,6 @@ void InitActions() {
   commands[i++] = {Key("I"), MoveToStartAndEnterInsertMode};
   commands[i++] = {Key("A"), MoveToEndAndEnterInsertMode};
 
-  commands[i++] = {Key("D"), RemoveUntilEnd};
-  commands[i++] = {Key("C"), RemoveUntilEndAndEnterInsert};
-  commands[i++] = {Key("Y"), CopyUntilEnd};
-
   commands[i++] = {Ctrl("-"), DecFontSize};
   commands[i++] = {Ctrl("="), IncFontSize};
   commands[i++] = {Key("o"), CreateItemAfter};
@@ -490,6 +500,19 @@ void InitActions() {
   commands[i++] = {Key("p"), PasteAfter};
 
   commands[i++] = {Key("gl"), PostLaunchUrlEvent};
+
+  // One two three. Four five six. Seven eight. Nine.
+
+  // now this is where combinatorics will kick in.
+  // I will start from naive approach by enumerating all possible combinations for action + motion,
+  // but I will need a more flexible solution later
+  commands[i++] = {Key("d0"), RemoveUntilStart};
+  commands[i++] = {Key("c0"), ReplaceUntilStart};
+  commands[i++] = {Key("y0"), CopyUntilStart};
+
+  commands[i++] = {Key("D"), RemoveUntilEnd};
+  commands[i++] = {Key("C"), ReplaceUntilEnd};
+  commands[i++] = {Key("Y"), CopyUntilEnd};
 
   commandsLen = i;
 }
