@@ -284,7 +284,12 @@ void SelectFirstItem() {
 }
 
 void CopyLine() {
-  ClipboardCopy(appState.window, selectedItem->text, selectedItem->textLen);
+  ClipboardCopy(appState.window, selectedItem->text, selectedItem->textLen - 1);
+}
+
+void CopyUntilEnd() {
+  ClipboardCopy(appState.window, selectedItem->text + cursor.pos,
+                selectedItem->textLen - cursor.pos);
 }
 
 void CopyItem() {
@@ -441,6 +446,7 @@ void InitActions() {
 
   commands[i++] = {Key("D"), RemoveUntilEnd};
   commands[i++] = {Key("C"), RemoveUntilEndAndEnterInsert};
+  commands[i++] = {Key("Y"), CopyUntilEnd};
 
   commands[i++] = {Ctrl("-"), DecFontSize};
   commands[i++] = {Ctrl("="), IncFontSize};
