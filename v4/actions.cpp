@@ -598,6 +598,7 @@ void InitActions() {
   commands[i++] = {Key("yn"), CopyItem};
   commands[i++] = {Key("P"), PasteBefore};
   commands[i++] = {Key("p"), PasteAfter};
+  commands[i++] = {Ctrl("v"), PasteAfter};
 
   commands[i++] = {Key("gl"), PostLaunchUrlEvent};
 

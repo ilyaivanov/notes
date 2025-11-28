@@ -1,6 +1,7 @@
 #define UNICODE
 #define WIN32_LEAN_AND_MEAN
 
+// #define SHOW_CHILDREN_LINES
 // #define FULLSCREEN
 
 #include "../win32.cpp"
@@ -364,7 +365,7 @@ bool IsFocused(Item* item) {
 }
 
 bool IsItemOpenVisually(Item* item) {
-  return item->isOpen == Open || item == itemFocused;
+  return item->isOpen == Open || (item == itemFocused && item->childrenLen > 0);
 }
 
 f32 GetFontHeight() {
@@ -407,6 +408,29 @@ f32 DrawItem(Item* item, f32 x, f32 y, Rect rect) {
   return height * (1 + lineHeight);
 }
 
+f32 GetChildrenHeight(Item* item) {
+  Item* stack[200];
+  int stackLen = 0;
+
+  stack[stackLen++] = item;
+
+  // to exclude itself
+  i32 count = -1;
+  while (stackLen > 0) {
+    Item* child = stack[--stackLen];
+    count++;
+    if (child->isOpen) {
+      for (i32 i = child->childrenLen - 1; i >= 0; i--) {
+        stack[stackLen++] = child->children[i];
+      }
+    }
+  }
+
+  // TODO: this assumses all items are of the same height, which will Typography feature will not be
+  // the case
+  return count * GetFontHeight() * (1 + lineHeight);
+}
+
 void PaintSplit(Item* item, Rect rect) {
   v2 runningPos = vec2(rect.x, rect.y) + pagePadding;
 
@@ -430,6 +454,15 @@ void PaintSplit(Item* item, Rect rect) {
       }
 
       runningPos.y += DrawItem(entry.item, x, y, rect);
+
+#ifdef SHOW_CHILDREN_LINES
+      if (entry.item->isOpen && !IsFocused(entry.item)) {
+        // f32 height = 200;
+        f32 height = GetChildrenHeight(entry.item);
+        f32 grey = 0.15;
+        PaintRect(x + 5, runningPos.y, 2, height, vec3(grey, grey, grey));
+      }
+#endif
     }
 
     if (entry.item->isOpen || entry.item == itemFocused) {
