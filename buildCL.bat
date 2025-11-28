@@ -6,7 +6,7 @@ set CommonCompilerOptions=/nologo /GR- /FC /GS- /Gs9999999
 
 set CompilerOptionsDev=/Zi /Od
 
-set CompilerOptionsProd=/O2 
+set CompilerOptionsProd=/O2 /arch:AVX2 /favor:INTEL64
 
 set LinkerOptions=/nodefaultlib /subsystem:windows /incremental:no /out:build\main.exe
 set Libs=user32.lib gdi32.lib kernel32.lib dwmapi.lib shell32.lib opengl32.lib
