@@ -1,4 +1,4 @@
-Note system /c
+Note system
   Bugs
     I don't handle empty state
     <C-w> in insert mode doesn't work wne cursor placed on / or _
@@ -12,10 +12,11 @@ Note system /c
     Motions - w W b B 0 $ l n 
     Text objects (a i) - w W b B [ ' " s
     5 * (8 + 8 * 2) = 120 that's how many methods will I have implementing this in naive way
-  Backlog /c
+  Backlog
     Search local via /
     Visual Line mode
     Global search ' sg'
+    Image support
     Save item focused, selected item, scroll position into a separate file or maybe last line in a filepath
     Draw children lines
     Splits
@@ -52,7 +53,7 @@ Note system /c
     Command Buffer /c
       Allows to have . (repeat last command)
       Allows to have actions consisting from multiple keys and combinators (ctrl, alt, win)
-  Things to think about
+  Things to think about /c
     Multiple cursors
     Two hand navigation /c
       right hand makes regular hjkl motions
@@ -69,7 +70,7 @@ Note system /c
     Showing images
       Maybe minimal image editor
     Embedded calculator
-  Logs
+  Logs /c
     21.11.25 /c
       Started the notes project
       Tree view for the notes
@@ -175,6 +176,10 @@ Links file /c
   Vim  /c
     Mastering quickfix list https://www.youtube.com/watch?v=aKG9uR6LhX4
 Tutorials /c
+  Handmade Hero
+  Computer Enhance
+  Learn OpenGL
+  Nature of Code
   Backlog /c
     FFmpeg asm lessons https://github.com/FFmpeg/asm-lessons/tree/main
     Notes on Computer Enhance file:///C:/holy/editor/ce/notes/notes.html
@@ -200,10 +205,6 @@ Tutorials /c
     Cool into line\curve rasterization http://members.chello.at/%7Eeasyfilter/bresenham.html
     Shader academy https://shaderacademy.com/explore
     Cool tutorial for pixel graphics https://www.youtube.com/watch?v=KS837a-TFRc
-  Handmade Hero
-  Computer Enhance
-  Nature of Code
-  Learn OpenGL
   Courses\books /c
     Nature of Code
     	x86 modern assembly book
@@ -214,29 +215,45 @@ Tutorials /c
     Fundamentals of Backend Engineering
     Creative Coding with Canvas and WebGL
     JS on the Background
-Navigating Digital Information /c
-  Intro
-    - Joke: two fish swim in the ocean. WAlk to a old fish, old fish asks "how the ocea?". They swim further without the response. Then one fish asks another "what's ocean"
-    Author says he is not the wise fish. In addition he mentions that he is skeptical of any fish claiming to be wise here.
-    Internet is young and we are still figuring it out how to use it. 
-    Some key terms: 
-      misinformation - unintentionally incorrect information
-      disinformation - intentionally incorrect information
-      hate speech and propaganda have no definitions
-  Part 2 Facts and Fact checking
-    Ask yourself three questions 
-      Who is behind this information 
-      What is the evidence of their claims
-      What other sources say about their claims
-    They show a GREAT example of showing where is the horizon using two points. 
-    They claim
-      - Reading is a usefull skill - factual claim
-      - Reading X will make you a great person - opinion claim
-Music /c
+  Other /c
+    Navigating Digital Information /c
+      Intro
+        - Joke: two fish swim in the ocean. WAlk to a old fish, old fish asks "how the ocea?". They swim further without the response. Then one fish asks another "what's ocean"
+        Author says he is not the wise fish. In addition he mentions that he is skeptical of any fish claiming to be wise here.
+        Internet is young and we are still figuring it out how to use it. 
+        Some key terms: 
+          misinformation - unintentionally incorrect information
+          disinformation - intentionally incorrect information
+          hate speech and propaganda have no definitions
+      Part 2 Facts and Fact checking
+        Ask yourself three questions 
+          Who is behind this information 
+          What is the evidence of their claims
+          What other sources say about their claims
+        They show a GREAT example of showing where is the horizon using two points. 
+        They claim
+          - Reading is a usefull skill - factual claim
+          - Reading X will make you a great person - opinion claim
+Music
   Art of deep music https://www.youtube.com/watch?v=ZfoEUdAld2k
   LoFi horse https://www.youtube.com/watch?v=_DwmKtbVFJ4
   Chill Music https://www.youtube.com/watch?v=-sZqtdT-GVw
   Stellardrone - Light Years https://www.youtube.com/watch?v=NDJn0SQehb4
+  Ambient /c
+    Carbon Based Lifeforms /c
+      https://www.youtube.com/channel/UCVMAuwgr6s72Vlowid2EsbQ
+    Sync24
+    Fahrenheit Project /c
+      https://www.youtube.com/watch?v=QCbTQgd-DiU&list=PLmra7fI3naYZ1qtEdWkRvKh6GbHDA1OIR&index=2
+    Hol Bauman
+    Zero Cult /c
+      2009 - Dreams in Stereo /c
+        https://www.youtube.com/watch?v=-QVCFoPx-54&list=RD-QVCFoPx-54
+      2017 - Closer Than Ever /c
+        https://www.youtube.com/watch?v=-QVCFoPx-54
+      2024 - Inversion /c
+        https://www.youtube.com/watch?v=wrLd2ywgRq0&list=RDwrLd2ywgRq0&start_radio=1
+    James Murray
   Ambient music from Tim the Fallout guy /c
     Video Source /c
       https://www.youtube.com/watch?v=4yHKBeI1uq4
