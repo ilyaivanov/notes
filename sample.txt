@@ -1,14 +1,9 @@
 I need minimal utf-16 support (minimal because I can live with single codepoint implementation for c16) /c
   I can write in english, but it might get tedious and considering I will need full Unicode support in the future, that's what I need to focus on
 Also I need focus, just to get rid of other stuff and focus on what I'm working on. Thus I can postpone search for now
-Note system
-  Done
-    Partial UTF-16 suppport. Only single codepoints supported for UTF-16
-    Focusing on an item. Will work on limiting action inside the focused item
-    Added line height
-    G gg take into account itemFocused
-    _ca _oa _cs _os open\close all siblings or all items in the view
-  Bugs /c
+Note system /c
+  Bugs
+    I don't handle empty state
     <C-w> in insert mode doesn't work wne cursor placed on / or _
     b is not working on / or _ as well
   Motions /c
@@ -20,7 +15,7 @@ Note system
     Motions - w W b B 0 $ l n 
     Text objects (a i) - w W b B [ ' " s
     5 * (8 + 8 * 2) = 120 that's how many methods will I have implementing this in naive way
-  Backlog
+  Backlog /c
     Search local via /
     Visual Line mode
     Global search ' sg'
@@ -73,6 +68,9 @@ Note system
         All text as c16
         Cursor position is set it characters, not bytes or codepoints
     Embedded youtube player
+    Working with code
+    Showing images
+      Maybe minimal image editor
     Embedded calculator
   Logs
     21.11.25 /c
@@ -114,7 +112,13 @@ Note system
       zt and zb
       Y C and D
       Scroll of the items
-    28.11.25
+    28.11.25 /c
+      Partial UTF-16 suppport. Only single codepoints supported for UTF-16
+      Focusing on an item. Will work on limiting action inside the focused item
+      Added line height
+      G gg take into account itemFocused
+      _ca _oa _cs _os open\close all siblings or all items in the view
+      Restrict movement and selection inside focused item
 Courses\books /c
   Nature of Code
   	x86 modern assembly
@@ -210,7 +214,7 @@ Tutorials  /c
   Cool tutorial for pixel graphics https://www.youtube.com/watch?v=KS837a-TFRc
 Navigating Digital Information /c
   Intro
-    - Joke: two fish swim iin the ocean. WAlk to a old fish, old fish asks "how the ocea?". They swim further without the response. Then one fish asks another "what's ocean"
+    - Joke: two fish swim in the ocean. WAlk to a old fish, old fish asks "how the ocea?". They swim further without the response. Then one fish asks another "what's ocean"
     Author says he is not the wise fish. In addition he mentions that he is skeptical of any fish claiming to be wise here.
     Internet is young and we are still figuring it out how to use it. 
     Some key terms: 
@@ -231,6 +235,70 @@ Music /c
   LoFi horse https://www.youtube.com/watch?v=_DwmKtbVFJ4
   Chill Music https://www.youtube.com/watch?v=-sZqtdT-GVw
   Stellardrone - Light Years https://www.youtube.com/watch?v=NDJn0SQehb4
+  Ambient music from Tim the Fallout guy /c
+    Video Source /c
+      https://www.youtube.com/watch?v=4yHKBeI1uq4
+    Boards of Canada
+    Delirium
+    Biosphere
+    Moby
+    Global Communication
+    Amorphous Androgynous
+    Mystical Sun
+    Solar Fields
+    HUVA Network
+    Jean Michel Jarre
+    Tangerine Dream
+    Patrick O'Hearn
+    Brian Eno
+    Vangelis
+    Cocteau Twins
+    Ray Lynch
+    Angelo Badalamenti
+    Harold Budd
+    Aphex Twin
+    Justin Lassen
+    Marconi Union
+    Mythos
+    Tycho
+    Sigur Ros
+    Heavenly Bodies
+    Woob
+    David Sylvian
+    Ryuichi Sakamoto
+    Jah Wobble
+    William Orbit
+    Nusrat Fateh Ali Khan
+    Future Sound of London
+    Ulrich Schnauss
+    Laraji
+    Loess
+    Crown Invisible
+    Dilate
+    Troika
+    Geodesium
+    Jon Hassell
+    Kevin Braheny
+    Howie B & Hubert Noi
+    Dweller at the Threshold
+    Benn Jordan
+    David Helping
+    Cliff Martinez
+    General Fuzz
+    Cyber Zen Sound Engine
+    Mike Oldfield
+    Terry Oldfield
+    Miles Tillmann
+    Altus
+    Sephiroth
+    Jeff Greinke
+    Windy and Carl
+    Stars of the Lid
+    Scorn
+    Steve Roach
+    Mindspawn
+    Robert Rich
+    Ian Bodd
 Examples I have /c
   Youtube API player in a webpage (just html\js)
   WebView2 simple webpage from C win32 
@@ -267,3 +335,4 @@ Video /c
   НАБУ та САП
   Staring video about NABU vs SBU 
     https://www.youtube.com/watch?v=5e7K-WKkn18
+  Железняк назвав 4 кандидати на голову ОП: Свириднко. Михайло Федоров, Буданов, Шмигаль. 
