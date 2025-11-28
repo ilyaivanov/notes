@@ -18,9 +18,11 @@ struct Cursor {
 AppState appState;
 Mode mode = Normal;
 i32 fontSize;
+f32 lineHeight;
 Cursor cursor;
 Item* root;
 Item* selectedItem;
+Item* itemFocused;
 c16 errorMessage[255];
 
 struct SearchEntrance {
@@ -176,6 +178,16 @@ void IncFontSize() {
 
 void DecFontSize() {
   fontSize--;
+  UpdateFontSize();
+}
+
+void IncLineHeight() {
+  lineHeight += 0.1f;
+  UpdateFontSize();
+}
+
+void DecLineHeight() {
+  lineHeight -= 0.1f;
   UpdateFontSize();
 }
 
@@ -429,7 +441,7 @@ void OpenUrlUnderCursor() {
     for (i32 i = 0; i < error.len; i++)
       errorMessage[i] = error.content[i];
 
-    errorMessage[error.len] = '\0';
+    errorMessage[error.len] = L'\0';
   }
 
   vfree(url);
@@ -459,6 +471,17 @@ void UpdateSearchResults() {
   scrollOffset.target = GetItemOffsetOnPage(center) - appState.size.y / 2.0f;
 }
 
+void FocusOnCurrentItem() {
+
+  itemFocused = selectedItem;
+}
+
+void FocusOnParent() {
+  if (itemFocused->parent) {
+    itemFocused = itemFocused->parent;
+  }
+}
+
 void InitActions() {
   i32 i = 0;
 
@@ -473,8 +496,6 @@ void InitActions() {
   commands[i++] = {Key("I"), MoveToStartAndEnterInsertMode};
   commands[i++] = {Key("A"), MoveToEndAndEnterInsertMode};
 
-  commands[i++] = {Ctrl("-"), DecFontSize};
-  commands[i++] = {Ctrl("="), IncFontSize};
   commands[i++] = {Key("o"), CreateItemAfter};
   commands[i++] = {Key("O"), CreateItemBefore};
   commands[i++] = {Ctrl("o"), CreateItemInside};
@@ -500,8 +521,8 @@ void InitActions() {
   commands[i++] = {Alt("h"), SwapLeft};
   commands[i++] = {Alt("l"), SwapRight};
 
-  commands[i++] = {Key("G"), SelectFirstItem};
-  commands[i++] = {Key("gg"), SelectLastItem};
+  commands[i++] = {Key("gg"), SelectFirstItem};
+  commands[i++] = {Key("G"), SelectLastItem};
 
   commands[i++] = {Key("x"), RemoveCurrentChar};
   commands[i++] = {Key("dn"), DeleteCurrentItem};
@@ -518,6 +539,12 @@ void InitActions() {
 
   commands[i++] = {Key("/"), EnterSearchLocal};
 
+  // Typography
+  commands[i++] = {Ctrl("-"), DecFontSize};
+  commands[i++] = {Ctrl("="), IncFontSize};
+  commands[i++] = {Ctrl("_"), DecLineHeight};
+  commands[i++] = {Ctrl("+"), IncLineHeight};
+
   // One two three. Four five six. Seven eight. Nine.
 
   // now this is where combinatorics will kick in.
@@ -531,6 +558,9 @@ void InitActions() {
 
   commands[i++] = {Key("y0"), CopyUntilStart};
   commands[i++] = {Key("Y"), CopyUntilEnd};
+
+  commands[i++] = {Ctrl("f"), FocusOnCurrentItem};
+  commands[i++] = {Alt("f"), FocusOnParent};
 
   commandsLen = i;
 }

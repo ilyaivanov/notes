@@ -405,6 +405,8 @@ f32 abs(f32 a) {
 }
 
 i32 round(f32 a) {
+  if (a < 0)
+    return i32(a - 0.5);
   return i32(a + 0.5);
 }
 
@@ -439,9 +441,13 @@ void Append(CharBuffer* buff, f32 val) {
   if (val != val)
     Append(buff, L"NaN");
   else {
+    i64 dec = (i64)val;
+    if (dec == 0 && val < 0)
+      AddChar(buff, L'-');
+
     Append(buff, (i64)val);
     AddChar(buff, L'.');
-    Append(buff, (i64)((val - (i64)val) * 10));
+    Append(buff, (i64)round(abs((val - (i64)val) * 10)));
   }
 }
 
@@ -596,6 +602,15 @@ i32 IndexOf(c16* str, i32 len, c16 ch) {
   }
 
   return -1;
+}
+
+i32 CountLines(c16* str, i32 len) {
+  i32 res = 0;
+  for (i32 i = 0; i < len; i++) {
+    if (str[i] == L'\n')
+      res++;
+  }
+  return res;
 }
 
 #pragma function(memcpy)

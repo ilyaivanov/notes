@@ -12,7 +12,9 @@ i32 step = 20;
 
 HWND win;
 HFONT font;
+HFONT titleFont;
 #define initialFontSize 14
+#define titleFontDelta 8
 
 HDC windowDc;
 HDC drawingDc;
@@ -69,9 +71,13 @@ HFONT CreateAppFont(HDC dc, const wchar_t* name, i32 weight, i32 fontSize, DWORD
 void UpdateFontSize() {
   if (font)
     DeleteFont(font);
+  if (titleFont)
+    DeleteFont(titleFont);
 
   font = CreateAppFont(appState.dc, L"Segoe UI", FW_NORMAL, fontSize,
                        CLEARTYPE_QUALITY); // ANTIALIASED_QUALITY
+  titleFont = CreateAppFont(appState.dc, L"Segoe UI", FW_SEMIBOLD, fontSize + titleFontDelta,
+                            CLEARTYPE_QUALITY); // ANTIALIASED_QUALITY
 }
 
 i32 GetTextWidth(c16* text, i32 from, i32 to) {
@@ -229,12 +235,21 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         ignoreNextCharEvent = true;
       }
 
+      // this is utter shit, but I don't know how to trigger WM_CHAR with VK_CONTROL pressed
       if (IsKeyPressed(VK_CONTROL)) {
-        if (wParam == VK_OEM_PLUS)
-          AppendChar(L'=');
+        if (wParam == VK_OEM_PLUS) {
+          if (IsKeyPressed(VK_SHIFT))
+            AppendChar(L'+');
+          else
+            AppendChar(L'=');
+        }
 
-        if (wParam == VK_OEM_MINUS)
-          AppendChar(L'-');
+        if (wParam == VK_OEM_MINUS) {
+          if (IsKeyPressed(VK_SHIFT))
+            AppendChar(L'_');
+          else
+            AppendChar(L'-');
+        }
       }
 
       if (wParam == VK_BACK) {
@@ -350,53 +365,70 @@ f32 GetFontHeight() {
   return textMetric.tmAscent + textMetric.tmDescent;
 }
 
+f32 DrawItem(Item* item, f32 x, f32 y, Rect rect) {
+  v3 lineColorToUse = lineColor;
+  v3 cursorColorToUse = cursorColor;
+  if (mode == Insert) {
+    lineColorToUse = lineInsertColor;
+    cursorColorToUse = cursorInsertColor;
+  }
+
+  int fontHeight = GetFontHeight();
+  if (item == selectedItem) {
+    PaintRect(rect.x, y, rect.width, fontHeight, lineColorToUse);
+    SetColors(white, lineColorToUse);
+  } else {
+    SetColors(white, bg);
+  }
+
+  if (!item->isOpen && item->childrenLen > 0) {
+    PaintRect(rect.x, y, 4, fontHeight, red);
+  }
+
+  HDC dc = appState.dc;
+  RECT re = {(i32)x, (i32)y, i32(rect.x + rect.width), i32(rect.y + rect.height)};
+  f32 height = DrawTextW(dc, item->text, item->textLen, &re, DT_NOPREFIX | DT_LEFT | DT_TOP);
+
+  if (item == selectedItem) {
+    i32 cursorX = x + SelectedItemTextWidth(cursor.pos);
+    PaintRect(cursorX, y, 1, fontHeight, cursorColorToUse);
+  }
+
+  if (item->textLen == 0)
+    return fontHeight * (1 + lineHeight);
+  return height * (1 + lineHeight);
+}
+
 void PaintSplit(Item* root, Rect rect) {
   v2 runningPos = vec2(rect.x, rect.y) + pagePadding;
+
+  RECT re = {(i32)runningPos.x, (i32)runningPos.y, i32(rect.x + rect.width),
+             i32(rect.y + rect.height)};
 
   StackEntry stack[200];
   int stackLen = 0;
 
-  stack[stackLen++] = {root, -1};
+  stack[stackLen++] = {itemFocused, -1};
 
   while (stackLen > 0) {
     StackEntry entry = stack[--stackLen];
     bool isClosed = !entry.item->isOpen && entry.item->childrenLen > 0;
 
-    v3 lineColorToUse = lineColor;
-    v3 cursorColorToUse = cursorColor;
-    if (mode == Insert) {
-      lineColorToUse = lineInsertColor;
-      cursorColorToUse = cursorInsertColor;
-    }
-
     f32 x = runningPos.x + entry.level * step;
-    i32 y = (i32)round(runningPos.y - scrollOffset.current);
-    if (entry.level >= 0) {
-      if (entry.item == selectedItem) {
-        PaintRect(rect.x, y, rect.width, GetFontHeight(), lineColorToUse);
-        SetColors(white, lineColorToUse);
+    f32 y = runningPos.y - scrollOffset.current;
+
+    if (!IsRoot(entry.item)) {
+      if (entry.item == itemFocused) {
+        x += step;
+        SelectFont(appState.dc, titleFont);
       } else {
-        SetColors(white, bg);
+        SelectFont(appState.dc, font);
       }
 
-      if (isClosed) {
-        PaintRect(rect.x, y, 4, GetFontHeight(), red);
-      }
-
-      c16* text = entry.item->text;
-      i32 len = entry.item->textLen;
-      HDC dc = appState.dc;
-      RECT re = {(i32)x, (i32)y, i32(rect.x + rect.width), i32(rect.y + rect.height)};
-      DrawTextW(dc, text, len, &re, DT_NOPREFIX | DT_LEFT | DT_TOP);
-
-      if (entry.item == selectedItem) {
-        i32 cursorX = x + SelectedItemTextWidth(cursor.pos);
-        PaintRect(cursorX, y, 1, GetFontHeight(), cursorColorToUse);
-      }
-      runningPos.y += GetFontHeight();
+      runningPos.y += DrawItem(entry.item, x, y, rect);
     }
 
-    if (!isClosed) {
+    if (entry.item->isOpen) {
       for (i32 i = entry.item->childrenLen - 1; i >= 0; i--) {
         stack[stackLen++] = {entry.item->children[i], entry.level + 1};
       }
@@ -434,13 +466,11 @@ void Init() {
 
   i32 codepointsCount;
   c16* file2 = LoadFileUtf16((c16*)filePath, &codepointsCount);
-  // SaveFileUtf16((c16*)filePath, file2, len);
 
-  // FileContent file = ReadMyFileImp(filePath);
   root = ParseFileIntoRoot(file2, codepointsCount);
-  selectedItem = root->children[0];
+  itemFocused = root;
+  selectedItem = itemFocused->children[0];
   vfree(file2);
-  // vfree(file.content);
 };
 
 void AppendCommandBuffer(CharBuffer& buff, CommandBuffer& commandBuffer) {
@@ -479,8 +509,6 @@ void AppendCommandBuffer(CharBuffer& buff, CommandBuffer& commandBuffer) {
 void DrawApp() {
   memset(canvas.pixels, round(bg.x * 255.0f), canvas.width * canvas.height * 4);
 
-  SelectFont(appState.dc, font);
-
   SelectBitmap(drawingDc, bitmap);
   RECT windowRect = {0, 0, (i32)appState.size.x, (i32)appState.size.y};
 
@@ -514,6 +542,9 @@ void DrawApp() {
 
   Append(&buff, L"\nFont: ");
   Append(&buff, fontSize);
+
+  Append(&buff, L"\nLine height: ");
+  Append(&buff, lineHeight);
 
   Append(&buff, L"\nCommand (");
   Append(&buff, command.len);
