@@ -8,7 +8,7 @@
 
 #define EMPTY_ITEM_TEXT_CAPACITY 8
 
-enum Mode { Normal, Insert, ReplaceChar, VisualLine, Visual, Modal };
+enum Mode { Normal, Insert, ReplaceChar, SearchLocal, VisualLine, Visual, Modal };
 
 struct Cursor {
   i32 pos;
@@ -21,7 +21,19 @@ i32 fontSize;
 Cursor cursor;
 Item* root;
 Item* selectedItem;
-char errorMessage[255];
+c16 errorMessage[255];
+
+struct SearchEntrance {
+  Item* item;
+  i32 at;
+};
+
+c16 searchTerm[255];
+i32 searchTermLen;
+
+SearchEntrance searchResults[1024];
+i32 searchResultsLen;
+i32 currentSearchResult;
 
 Spring scrollOffset;
 v2 pagePadding = {20, 5};
@@ -36,7 +48,7 @@ void FindPositionBasedOnDesiredOffset();
 f32 GetFontHeight();
 
 // TODO: this function should take rect as a param
-f32 CursorY() {
+f32 GetItemOffsetOnPage(Item* item) {
   v2 runningPos = pagePadding;
   StackEntry stack[200];
   int stackLen = 0;
@@ -47,7 +59,7 @@ f32 CursorY() {
     StackEntry entry = stack[--stackLen];
     bool isClosed = !entry.item->isOpen && entry.item->childrenLen > 0;
 
-    if (entry.item == selectedItem)
+    if (entry.item == item)
       return runningPos.y;
 
     if (entry.level >= 0) {
@@ -72,19 +84,20 @@ f32 ClampScroll(f32 val) {
 }
 
 void CenterOnItem() {
-  scrollOffset.target = ClampScroll(CursorY() - appState.size.y / 2.0f);
+  scrollOffset.target = ClampScroll(GetItemOffsetOnPage(selectedItem) - appState.size.y / 2.0f);
 }
 
 void BottomOnItem() {
-  scrollOffset.target = ClampScroll(CursorY() - appState.size.y + GetFontHeight());
+  scrollOffset.target =
+      ClampScroll(GetItemOffsetOnPage(selectedItem) - appState.size.y + GetFontHeight());
 }
 
 void TopOnItem() {
-  scrollOffset.target = ClampScroll(CursorY());
+  scrollOffset.target = ClampScroll(GetItemOffsetOnPage(selectedItem));
 }
 
 void CenterOnItemIfOutOfBounds() {
-  f32 cursorY = CursorY();
+  f32 cursorY = GetItemOffsetOnPage(selectedItem);
   if (cursorY < scrollOffset.target)
     CenterOnItem();
   if (cursorY > scrollOffset.target + appState.size.y)
@@ -309,7 +322,7 @@ void CopyUntilEnd() {
 void CopyItem() {
   i32 cap = MB(2);
   i32 bytesWritten;
-  char* space = (char*)valloc(cap);
+  c16* space = (c16*)valloc(cap);
   SerializeRoot(selectedItem, space, &bytesWritten, cap);
 
   ClipboardCopy(appState.window, space, bytesWritten);
@@ -318,8 +331,8 @@ void CopyItem() {
 
 void Paste(bool isAfter) {
   i32 size;
-  c8* text = ClipboardPaste(appState.window, &size);
-  bool hasNewLine = IndexOf(text, size, '\n') >= 0;
+  c16* text = ClipboardPaste(appState.window, &size);
+  bool hasNewLine = IndexOf(text, size, L'\n') >= 0;
 
   if (hasNewLine) {
     Item* tempRoot = ParseFileIntoRoot(text, size);
@@ -363,57 +376,50 @@ void PostLaunchUrlEvent() {
   PostMessage(appState.window, WM_LAUNCH_URL_UNDER_CURSOR, 0, 0);
 }
 
-const char* validPrefixes[] = {"http:", "https:", "file:"};
+const c16* validPrefixes[] = {L"http:", L"https:", L"file:"};
 void OpenUrlUnderCursor() {
-  char* url = (char*)valloc(1);
+  c16* url = (c16*)valloc(KB(1024));
   i32 current = cursor.pos;
-  if (selectedItem->text[current] == ' ' || current == selectedItem->textLen)
+  if (selectedItem->text[current] == L' ' || current == selectedItem->textLen)
     current--;
 
   i32 start = current;
   i32 end = current;
 
-  while (selectedItem->text[start] != ' ' && start > 0)
+  while (selectedItem->text[start] != L' ' && start > 0)
     start--;
 
-  if (selectedItem->text[start] == ' ')
+  if (selectedItem->text[start] == L' ')
     start++;
 
-  while (selectedItem->text[end] != ' ' && end < selectedItem->textLen - 1)
+  while (selectedItem->text[end] != L' ' && end < selectedItem->textLen - 1)
     end++;
 
-  if (selectedItem->text[end] == ' ')
+  if (selectedItem->text[end] == L' ')
     end--;
 
-  char* urlStart = selectedItem->text + start;
+  c16* urlStart = selectedItem->text + start;
   i32 urlLen = end - start + 1;
 
   bool isKnownUrl = false;
   for (i32 i = 0; i < ArrayLength(validPrefixes); i++) {
-    if (StartsWith(urlStart, urlLen, (char*)validPrefixes[i])) {
+    if (StartsWith(urlStart, urlLen, (c16*)validPrefixes[i])) {
       isKnownUrl = true;
       break;
     }
   }
 
-  char* runningUrl = url;
+  c16* runningUrl = url;
   if (!isKnownUrl) {
-    const char* defaultPrefix = "https://";
-    i32 prefixLen = strlen((char*)defaultPrefix);
+    const c16* defaultPrefix = L"https://";
+    i32 prefixLen = wstrlen((c16*)defaultPrefix);
     memcpy(url, defaultPrefix, prefixLen);
     runningUrl += prefixLen;
   }
 
   memcpy(runningUrl, urlStart, urlLen);
 
-  // SHELLEXECUTEINFOA info = {};
-  // info.cbSize = sizeof(info);
-  // info.fMask = SEE_MASK_FLAG_NO_UI;
-  // info.lpVerb = "open";
-  // info.lpFile = url;
-  // info.nShow = SW_SHOWNORMAL;
-
-  HINSTANCE res = ShellExecuteA(NULL, "open", url, NULL, NULL, SW_SHOWNORMAL);
+  HINSTANCE res = ShellExecuteW(NULL, L"open", url, NULL, NULL, SW_SHOWNORMAL);
   if ((u64)res <= 32) {
     CharBuffer error = {};
     Append(&error, L"Can't open: '");
@@ -421,11 +427,10 @@ void OpenUrlUnderCursor() {
     Append(&error, L"'");
 
     for (i32 i = 0; i < error.len; i++)
-      errorMessage[i] = (char)error.content[i];
+      errorMessage[i] = error.content[i];
 
     errorMessage[error.len] = '\0';
   }
-  // ShellExecuteExA(&info);
 
   vfree(url);
 }
@@ -442,6 +447,16 @@ void JumpHalfPageUp() {
   for (i32 i = 0; i < times; i++) {
     GoUp();
   }
+}
+
+void EnterSearchLocal() {
+  mode = SearchLocal;
+  searchTermLen = 0;
+}
+
+void UpdateSearchResults() {
+  Item* center = root->children[9];
+  scrollOffset.target = GetItemOffsetOnPage(center) - appState.size.y / 2.0f;
 }
 
 void InitActions() {
@@ -501,17 +516,20 @@ void InitActions() {
 
   commands[i++] = {Key("gl"), PostLaunchUrlEvent};
 
+  commands[i++] = {Key("/"), EnterSearchLocal};
+
   // One two three. Four five six. Seven eight. Nine.
 
   // now this is where combinatorics will kick in.
   // I will start from naive approach by enumerating all possible combinations for action + motion,
   // but I will need a more flexible solution later
   commands[i++] = {Key("d0"), RemoveUntilStart};
-  commands[i++] = {Key("c0"), ReplaceUntilStart};
-  commands[i++] = {Key("y0"), CopyUntilStart};
-
   commands[i++] = {Key("D"), RemoveUntilEnd};
+
+  commands[i++] = {Key("c0"), ReplaceUntilStart};
   commands[i++] = {Key("C"), ReplaceUntilEnd};
+
+  commands[i++] = {Key("y0"), CopyUntilStart};
   commands[i++] = {Key("Y"), CopyUntilEnd};
 
   commandsLen = i;

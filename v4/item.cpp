@@ -3,7 +3,7 @@
 
 enum IsOpen { Open = 1, Closed = 0, ClosedInFile = -1 };
 struct Item {
-  char* text;
+  c16* text;
   int textLen;
   int textCapacity;
 
@@ -63,21 +63,21 @@ Item* CreateEmptyItem(i32 textCapacity) {
   res->textCapacity = textCapacity;
   res->textLen = 0;
   if (res->textCapacity > 0)
-    res->text = (char*)valloc(res->textCapacity * sizeof(char));
+    res->text = (c16*)valloc(res->textCapacity * sizeof(c16));
 
   return res;
 }
 
-Item* CreateItem(Item* parent, const char* text, int len) {
+Item* CreateItem(Item* parent, const c16* text, int len) {
   Item* res = CreateEmptyItem(len + 10);
   res->textLen = len;
-  memcpy(res->text, text, len);
+  memcpy(res->text, text, len * sizeof(c16));
   AppendChild(parent, res);
   return res;
 }
 
 void RemoveChars(Item* item, i32 from, i32 to) {
-  char* text = item->text;
+  c16* text = item->text;
   i32 len = item->textLen;
   for (i32 i = to; i < len - 1; i++) {
     text[i + from - to] = text[i + 1];
@@ -102,17 +102,17 @@ i32 GetItemLevel(Item* item) {
 void CheckItemTextCapacity(Item* item, i32 charsToInsert) {
   if (item->textLen + charsToInsert > item->textCapacity) {
     item->textCapacity = item->textCapacity * 2 + charsToInsert;
-    char* newStr = (char*)valloc(item->textCapacity * sizeof(char));
-    memcpy(newStr, item->text, item->textLen);
+    c16* newStr = (c16*)valloc(item->textCapacity * sizeof(c16));
+    memcpy(newStr, item->text, item->textLen * sizeof(c16));
     vfree(item->text);
     item->text = newStr;
   }
 }
 
-void InsertCharAt(Item* item, i32 at, c8 ch) {
+void InsertCharAt(Item* item, i32 at, c16 ch) {
   CheckItemTextCapacity(item, 1);
 
-  char* text = item->text;
+  c16* text = item->text;
   i32 len = item->textLen;
   for (i32 i = len; i > at; i--) {
     text[i] = text[i - 1];
@@ -121,7 +121,7 @@ void InsertCharAt(Item* item, i32 at, c8 ch) {
   item->textLen++;
 }
 
-void InsertCharsAt(Item* item, i32 at, c8* text, i32 textLen) {
+void InsertCharsAt(Item* item, i32 at, c16* text, i32 textLen) {
   CheckItemTextCapacity(item, textLen);
 
   for (i32 i = item->textLen; i > at; i--) {
@@ -288,7 +288,7 @@ void MoveItemUp(Item* item) {
   }
 }
 
-#define isNewLine(val) (val == '\n' || val == '\r')
+#define isNewLine(val) (val == L'\n' || val == L'\r')
 
 void CheckForFileFlags(Item* item) {
   if (item->isOpen == ClosedInFile)
@@ -302,7 +302,7 @@ struct StackEntry {
   int level;
 };
 
-Item* ParseFileIntoRoot(char* file, int fileLen) {
+Item* ParseFileIntoRoot(c16* file, int fileLen) {
   Item* root = CreateRoot();
 
   StackEntry stack[200];
@@ -326,7 +326,7 @@ Item* ParseFileIntoRoot(char* file, int fileLen) {
       i32 textStart = lineStart + level;
       i32 textEnd = i;
 
-      bool isClosed = EndsWith(file + textStart, textEnd - textStart, (char*)" /c");
+      bool isClosed = EndsWith(file + textStart, textEnd - textStart, (c16*)L" /c");
       if (isClosed) {
         textEnd -= 3;
       }
@@ -363,7 +363,7 @@ void SerializeRoot(Item* root, void* space, i32* bytesWritten, i32 capacity) {
 
   stack[stackLen++] = {root, startLevel};
 
-  char* text = (char*)space;
+  c16* text = (c16*)space;
   i32 len = 0;
   *bytesWritten = 0;
   while (stackLen > 0) {
@@ -380,17 +380,17 @@ void SerializeRoot(Item* root, void* space, i32* bytesWritten, i32 capacity) {
     if (!IsRoot(item)) {
       i32 tabSize = 2;
       for (i32 i = 0; i < entry.level * tabSize; i++)
-        text[len++] = ' ';
+        text[len++] = L' ';
 
-      memcpy(text + len, item->text, item->textLen);
+      memcpy(text + len, item->text, item->textLen * sizeof(c16));
       len += item->textLen;
 
       if (!item->isOpen && item->childrenLen > 0) {
-        memcpy(text + len, " /c", 3);
+        memcpy(text + len, L" /c", 3 * sizeof(c16));
         len += 3;
       }
 
-      text[len++] = '\n';
+      text[len++] = L'\n';
     }
   }
   *bytesWritten = len;

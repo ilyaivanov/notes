@@ -35,7 +35,7 @@ u32 IsPunctuation(c16 ch) {
 
 // // one two three four five   six sever
 i32 JumpWordForwardIgnorePunctuation(Item* item, i32 from) {
-  c8* text = item->text;
+  c16* text = item->text;
   i32 textLen = item->textLen;
   i32 cursor = from;
   if (IsWhitespace(text[cursor])) {
@@ -54,7 +54,7 @@ i32 JumpWordForwardIgnorePunctuation(Item* item, i32 from) {
 }
 
 i32 JumpWordBackwardIgnorePunctuation(Item* item, i32 from) {
-  c8* text = item->text;
+  c16* text = item->text;
   i32 cursor = Max(from - 1, 0);
 
   if (IsWhitespace(text[cursor])) {
@@ -72,7 +72,7 @@ i32 JumpWordBackwardIgnorePunctuation(Item* item, i32 from) {
 }
 
 i32 JumpWordBackward(Item* item, i32 from) {
-  c8* text = item->text;
+  c16* text = item->text;
   i32 pos = Max(from - 1, 0);
   i32 isStartedAtWhitespace = IsWhitespace(text[pos]);
 
@@ -98,7 +98,7 @@ i32 JumpWordBackward(Item* item, i32 from) {
 }
 
 i32 JumpWordForward(Item* item, i32 from) {
-  c8* text = item->text;
+  c16* text = item->text;
   i32 pos = from;
   i32 size = item->textLen;
   if (IsWhitespace(text[pos])) {

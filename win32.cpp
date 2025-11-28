@@ -325,6 +325,26 @@ FileContent ReadMyFileImp(const wchar_t* path) {
   return res;
 }
 
+c16* LoadFileUtf16(c16* path, i32* len) {
+  i64 size = GetMyFileSize(path);
+  c8* file = (c8*)valloc(size);
+  ReadFileInto(path, size, file);
+  i32 wideCharsCount = MultiByteToWideChar(CP_UTF8, MB_PRECOMPOSED, file, size, 0, 0);
+  c16* text = (c16*)valloc(wideCharsCount * sizeof(c16));
+  MultiByteToWideChar(CP_UTF8, MB_PRECOMPOSED, file, size, text, wideCharsCount);
+
+  vfree(file);
+  *len = wideCharsCount;
+  return text;
+}
+
+void SaveFileUtf16(c16* path, c16* text, i32 textLen) {
+  i32 utf8Count = WideCharToMultiByte(CP_UTF8, 0, text, textLen, 0, 0, 0, 0);
+  c8* utf8Text = (c8*)valloc(utf8Count * sizeof(c8));
+  WideCharToMultiByte(CP_UTF8, 0, text, textLen, utf8Text, utf8Count, 0, 0);
+  WriteMyFile(path, utf8Text, utf8Count);
+}
+
 inline i64 GetPerfFrequency() {
   LARGE_INTEGER res;
   QueryPerformanceFrequency(&res);
@@ -527,8 +547,15 @@ i32 strlen(char* str) {
   return res;
 }
 
-i32 IndexOf(char* str, i32 len, char* substr) {
-  i32 substrLen = strlen(substr);
+i32 wstrlen(c16* str) {
+  i32 res = 0;
+  while (str[res] != L'\0')
+    res++;
+  return res;
+}
+
+i32 IndexOf(c16* str, i32 len, c16* substr) {
+  i32 substrLen = wstrlen(substr);
   i32 currentSubstr = 0;
   for (i32 i = 0; i < len; i++) {
     if (str[i] == substr[currentSubstr]) {
@@ -543,8 +570,8 @@ i32 IndexOf(char* str, i32 len, char* substr) {
   return -1;
 }
 
-bool EndsWith(char* str, i32 len, char* substr) {
-  i32 substrLen = strlen(substr);
+bool EndsWith(c16* str, i32 len, c16* substr) {
+  i32 substrLen = wstrlen(substr);
   i32 currentSubstr = substrLen - 1;
   for (i32 i = len - 1; i >= 0; i--) {
     if (str[len - substrLen + currentSubstr] == substr[currentSubstr]) {
@@ -558,24 +585,17 @@ bool EndsWith(char* str, i32 len, char* substr) {
   return false;
 }
 
-i32 StartsWith(char* str, i32 len, char* substr) {
+i32 StartsWith(c16* str, i32 len, c16* substr) {
   return IndexOf(str, len, substr) == 0;
 }
 
-i32 IndexOf(char* str, i32 len, char ch) {
+i32 IndexOf(c16* str, i32 len, c16 ch) {
   for (i32 i = 0; i < len; i++) {
     if (str[i] == ch)
       return i;
   }
 
   return -1;
-}
-
-i32 wstrlen(c16* str) {
-  i32 res = 0;
-  while (str[res] != L'\0')
-    res++;
-  return res;
 }
 
 #pragma function(memcpy)
@@ -587,15 +607,15 @@ extern "C" void* memcpy(void* dst, const void* src, size_t n) {
   return dst;
 }
 
-c8* ClipboardPaste(HWND window, i32* size) {
+c16* ClipboardPaste(HWND window, i32* size) {
   OpenClipboard(window);
-  HANDLE hClipboardData = GetClipboardData(CF_TEXT); // CF_UNICODETEXT
-  c8* pchData = (c8*)GlobalLock(hClipboardData);
-  c8* res = NULL;
+  HANDLE hClipboardData = GetClipboardData(CF_UNICODETEXT); // CF_UNICODETEXT
+  c16* pchData = (c16*)GlobalLock(hClipboardData);
+  c16* res = NULL;
   if (pchData) {
-    i32 len = strlen(pchData);
-    res = (c8*)valloc(len * sizeof(c8));
-    memcpy(res, pchData, len * sizeof(c8));
+    i32 len = wstrlen(pchData);
+    res = (c16*)valloc(len * sizeof(c16));
+    memcpy(res, pchData, len * sizeof(c16));
     GlobalUnlock(hClipboardData);
     *size = len;
   } else {
@@ -606,13 +626,13 @@ c8* ClipboardPaste(HWND window, i32* size) {
 }
 
 // https://www.codeproject.com/Articles/2242/Using-the-Clipboard-Part-I-Transferring-Simple-Tex
-void ClipboardCopy(HWND window, char* text, i32 len) {
+void ClipboardCopy(HWND window, c16* text, i32 len) {
   if (OpenClipboard(window)) {
     EmptyClipboard();
 
-    HGLOBAL hClipboardData = GlobalAlloc(GMEM_DDESHARE, (len + 1) * sizeof(char));
+    HGLOBAL hClipboardData = GlobalAlloc(GMEM_DDESHARE, (len + 1) * sizeof(c16));
 
-    char* pchData = (char*)GlobalLock(hClipboardData);
+    c16* pchData = (c16*)GlobalLock(hClipboardData);
 
     for (i32 i = 0; i < len; i++) {
       pchData[i] = text[i];
@@ -621,7 +641,7 @@ void ClipboardCopy(HWND window, char* text, i32 len) {
 
     GlobalUnlock(hClipboardData);
 
-    SetClipboardData(CF_TEXT, hClipboardData);
+    SetClipboardData(CF_UNICODETEXT, hClipboardData);
 
     CloseClipboard();
   }

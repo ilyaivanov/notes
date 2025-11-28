@@ -7,7 +7,7 @@
 #include "item.cpp"
 #include "actions.cpp"
 
-#define filePath L"foo.txt"
+#define filePath L"sample.txt"
 i32 step = 20;
 
 HWND win;
@@ -74,10 +74,10 @@ void UpdateFontSize() {
                        CLEARTYPE_QUALITY); // ANTIALIASED_QUALITY
 }
 
-i32 GetTextWidth(char* text, i32 from, i32 to) {
+i32 GetTextWidth(c16* text, i32 from, i32 to) {
   RECT rc = {0, 0, 0, 0};
 
-  DrawTextA(appState.dc, text + from, to - from, &rc, DT_SINGLELINE | DT_NOPREFIX | DT_CALCRECT);
+  DrawTextW(appState.dc, text + from, to - from, &rc, DT_SINGLELINE | DT_NOPREFIX | DT_CALCRECT);
   return rc.right - rc.left;
 }
 
@@ -110,7 +110,7 @@ void UpdateCursorPosWithDesiredOffset(i32 pos) {
 void RemoveWord() {
   i32 to = cursor.pos - 1;
   i32 from = cursor.pos - 1;
-  char* text = selectedItem->text;
+  c16* text = selectedItem->text;
   while (from >= 0 && text[from] == ' ')
     from--;
 
@@ -168,6 +168,16 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         // WM_KEYDOWN event. thus always settings ignoreNextCharEvent if entering insert mode. I
         // don't want that in case of WM_CHAR event
         ignoreNextCharEvent = false;
+      } else if (mode == SearchLocal) {
+
+        if (wParam == VK_ESCAPE) {
+          mode = Normal;
+        } else if (wParam == VK_BACK) {
+          searchTermLen = Max(searchTermLen - 1, 0);
+        } else {
+          searchTerm[searchTermLen++] = wParam;
+          UpdateSearchResults();
+        }
       } else if (mode == Insert) {
         if (wParam == VK_ESCAPE) {
           mode = Normal;
@@ -221,10 +231,10 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
 
       if (IsKeyPressed(VK_CONTROL)) {
         if (wParam == VK_OEM_PLUS)
-          AppendChar('=');
+          AppendChar(L'=');
 
         if (wParam == VK_OEM_MINUS)
-          AppendChar('-');
+          AppendChar(L'-');
       }
 
       if (wParam == VK_BACK) {
@@ -249,10 +259,12 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
 
       if (wParam == 'S' && IsKeyPressed(VK_CONTROL)) {
         i32 capacity = MB(2);
-        void* buffer = valloc(capacity);
-        i32 bytesWritten;
-        SerializeRoot(root, buffer, &bytesWritten, capacity);
-        WriteMyFile(filePath, (char*)buffer, bytesWritten);
+        c16* buffer = (c16*)valloc(capacity);
+        i32 codepointsLen;
+        SerializeRoot(root, buffer, &codepointsLen, capacity);
+        SaveFileUtf16((c16*)filePath, buffer, codepointsLen);
+
+        // WriteMyFile(filePath, (char*)buffer, codepointsLen);
         vfree(buffer);
       }
     }
@@ -371,11 +383,11 @@ void PaintSplit(Item* root, Rect rect) {
         PaintRect(rect.x, y, 4, GetFontHeight(), red);
       }
 
-      char* text = entry.item->text;
+      c16* text = entry.item->text;
       i32 len = entry.item->textLen;
       HDC dc = appState.dc;
       RECT re = {(i32)x, (i32)y, i32(rect.x + rect.width), i32(rect.y + rect.height)};
-      DrawTextA(dc, text, len, &re, DT_NOPREFIX | DT_LEFT | DT_TOP);
+      DrawTextW(dc, text, len, &re, DT_NOPREFIX | DT_LEFT | DT_TOP);
 
       if (entry.item == selectedItem) {
         i32 cursorX = x + SelectedItemTextWidth(cursor.pos);
@@ -403,16 +415,32 @@ void PaintSplit(Item* root, Rect rect) {
                       scrollbarHeight};
     PaintRect(scrollbar, vec3(0.3, 0.3, 0.3));
   }
+
+  if (searchTermLen > 0) {
+    if (mode == SearchLocal)
+      SetColors(vec3(0.3, 0.9, 0.4), bg);
+    else
+      SetColors(vec3(0.5, 0.5, 0.5), bg);
+
+    RECT re = {(i32)rect.x, (i32)rect.y, i32(rect.x + rect.width), i32(rect.y + rect.height)};
+    DrawTextW(appState.dc, searchTerm, searchTermLen, &re,
+              DT_SINGLELINE | DT_NOPREFIX | DT_RIGHT | DT_TOP);
+  }
 }
 
 void Init() {
   fontSize = initialFontSize;
   UpdateFontSize();
 
-  FileContent file = ReadMyFileImp(filePath);
-  root = ParseFileIntoRoot(file.content, file.size);
+  i32 codepointsCount;
+  c16* file2 = LoadFileUtf16((c16*)filePath, &codepointsCount);
+  // SaveFileUtf16((c16*)filePath, file2, len);
+
+  // FileContent file = ReadMyFileImp(filePath);
+  root = ParseFileIntoRoot(file2, codepointsCount);
   selectedItem = root->children[0];
-  vfree(file.content);
+  vfree(file2);
+  // vfree(file.content);
 };
 
 void AppendCommandBuffer(CharBuffer& buff, CommandBuffer& commandBuffer) {
@@ -506,7 +534,7 @@ void DrawApp() {
   if (errorMessage[0] != '\0') {
     footerRect.top += height;
     SetColors(vec3(0.8, 0.2, 0.2), bg);
-    DrawTextA(appState.dc, errorMessage, -1, &footerRect, DT_NOPREFIX | DT_BOTTOM | DT_RIGHT);
+    DrawTextW(appState.dc, errorMessage, -1, &footerRect, DT_NOPREFIX | DT_BOTTOM | DT_RIGHT);
   }
 
   PaintWindow();
