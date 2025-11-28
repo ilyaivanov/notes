@@ -1,4 +1,7 @@
-Note system 
+I need minimal utf-16 support (minimal because I can live with single codepoint implementation for c16) /c
+  I can write in english, but it might get tedious and considering I will need full Unicode support in the future, that's what I need to focus on
+Also I need focus, just to get rid of other stuff and focus on what I'm working on. Thus I can postpone search for now
+Note system  /c
   Done
     Scroll of the items
     zt and zb
@@ -17,30 +20,33 @@ Note system
   Backlog
     Search
     Splits
+    Clipboard buffer history (even when not active)
     When moving item up or down, check if it can be placed into a sibling (workflowy does this) /c
       For example for this case
       First
       Second
         Sub second
       Moving Sub second up would place it as child of first
-    Clipboard buffer history (even when not active)
     Add r and R
+    Highlight current word (made it different if url)
+    Highlight matching pair of ( [ { < " ' (assume " and ' are inside the same item)
     Embedded calculator
-    Motions to implement
+    Motions to implement /c
       cw c0 c$ cl ci
       f F df( cf)
       cib ciB dab dib
+      %
     Draw children lines
     Undo\redo
     Text wrap
+    Focusing on an item
     Visual Line mode
     Remove item and replace it with the children
-    Implement .
+    Implement proper .
     Unicode (UTF-16 support)
     Visual mode
     Typography  /c
       Font size and weight for specific items
-    Focusing on an item
     Tags
     Links
     Show if file is saved /c
@@ -190,7 +196,7 @@ Tutorials  /c
   CPU clock https://www.youtube.com/watch?v=PVNAPWUxZ0g&list=PLPJhK-Wm22S7rXHDhAd6O_XY_3MK7pf46
   C Programming and memory management https://www.youtube.com/watch?v=rJrd2QMVbGM
   Collision Detection https://www.youtube.com/watch?v=KZJXb5AF6NM&list=PLYuY7qeQZcWaofUHmLQy2q7xG9eiSxk1W
-  Intel� Performance Counter Monitor - A Better Way to Measure CPU Utilization https://www.intel.com/content/www/us/en/developer/articles/tool/performance-counter-monitor.html
+  Intel Performance Counter Monitor - A Better Way to Measure CPU Utilization https://www.intel.com/content/www/us/en/developer/articles/tool/performance-counter-monitor.html
   Rasterizer for fonts (as far as I understood) http://rastertragedy.com/RTRCh0.htm
   Computer Graphics from Scratch https://nostarch.com/computer-graphics-scratch
   Coding Challanges https://www.youtube.com/watch?v=KkyIDI6rQJI&list=PLRqwX-V7Uu6ZiZxtDDRCi6uhfTH4FilpH&index=5
@@ -234,7 +240,7 @@ Video /c
   Game Audio Programming in C++ https://www.youtube.com/watch?v=M8Bd7uHH4Yg
   When Your Game Is Bad But Your Optimisation Is Genius https://www.youtube.com/watch?v=5zlfJW2VGLM
   Crash course on games https://www.youtube.com/watch?v=FVTNtlq3-44&list=PL8dPuuaLjXtPTrc_yg73RghJEOdobAplG
-  Why My Game Still Isn�t Finished After 5 Years  https://www.youtube.com/watch?v=M77WPPT5pZY
+  Why My Game Still Isn't Finished After 5 Years  https://www.youtube.com/watch?v=M77WPPT5pZY
   On vector art creation (example) https://www.reddit.com/r/gamedevscreens/comments/1mtufd4/what_do_you_think_about_our_new_angrymeter/
   https://www.reddit.com/r/DestroyMyGame/comments/1n2uths/kleroo_a_dungeon_crawler_with_autobattles_and/
   Casey on n+2 programmers https://www.youtube.com/watch?v=xt1KNDmOYqA
@@ -252,3 +258,8 @@ Video /c
   We need to talk about Louis https://www.youtube.com/watch?v=93nMBtXVAfM
   Computer Graphics from Scratch book review https://www.youtube.com/watch?v=rqXCCpQT8cM
   Host crashes out https://www.youtube.com/watch?v=d7UErAZrwTw
+  Learning Assembly Language WIll change how you see software (or would it) https://www.youtube.com/watch?v=7u9alsjBJqM
+Міндічгейт
+  НАБУ та САП
+  Staring video about NABU vs SBU 
+    https://www.youtube.com/watch?v=5e7K-WKkn18
