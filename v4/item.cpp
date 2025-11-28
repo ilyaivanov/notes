@@ -99,6 +99,19 @@ i32 GetItemLevel(Item* item) {
   return level;
 }
 
+bool IsAChildOf(Item* potentialParent, Item* child) {
+  if (IsRoot(potentialParent))
+    return true;
+
+  Item* parent = child->parent;
+  while (!IsRoot(parent)) {
+    if (parent == potentialParent)
+      return true;
+    parent = parent->parent;
+  }
+  return false;
+}
+
 void CheckItemTextCapacity(Item* item, i32 charsToInsert) {
   if (item->textLen + charsToInsert > item->textCapacity) {
     item->textCapacity = item->textCapacity * 2 + charsToInsert;
@@ -171,7 +184,13 @@ void DeleteItemWithoutChildren(Item* item) {
   vfree(item);
 }
 
+bool IsItemOpenVisually(Item* item);
+bool IsFocused(Item* item);
+
 void DeleteItem(Item* item) {
+  if (IsFocused(item))
+    return;
+
   Item* parent = item->parent;
   i32 index = IndexOf(item);
 
@@ -200,7 +219,7 @@ bool IsLast(Item* item) {
 }
 
 Item* GetItemBelow(Item* item) {
-  if (item->isOpen)
+  if (IsItemOpenVisually(item))
     return item->children[0];
 
   Item* parent = item;
@@ -226,7 +245,7 @@ Item* GetItemAbove(Item* item) {
     return nullptr;
 
   Item* prev = parent->children[index - 1];
-  while (prev->isOpen) {
+  while (IsItemOpenVisually(prev)) {
     prev = prev->children[prev->childrenLen - 1];
   }
 
@@ -262,7 +281,7 @@ void MoveItemRight(Item* item) {
 
 void MoveItemLeft(Item* item) {
   Item* parent = item->parent;
-  if (!IsRoot(parent)) {
+  if (!IsFocused(parent)) {
     int index = IndexOf(parent);
     RemoveChildAt(parent, IndexOf(item));
     Item* newParent = parent->parent;

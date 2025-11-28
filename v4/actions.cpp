@@ -108,9 +108,11 @@ void CenterOnItemIfOutOfBounds() {
 
 void UpdateSelection(Item* item) {
   if (item) {
-    selectedItem = item;
-    FindPositionBasedOnDesiredOffset();
-    CenterOnItemIfOutOfBounds();
+    if (IsAChildOf(itemFocused, item) || item == itemFocused) {
+      selectedItem = item;
+      FindPositionBasedOnDesiredOffset();
+      CenterOnItemIfOutOfBounds();
+    }
   }
 }
 
@@ -312,7 +314,7 @@ void DeleteCurrentItem() {
 
 void SelectLastItem() {
   Item* mostNested = itemFocused;
-  while (mostNested->isOpen) {
+  while (IsItemOpenVisually(mostNested)) {
     mostNested = mostNested->children[mostNested->childrenLen - 1];
   }
   UpdateSelection(mostNested);
@@ -531,8 +533,12 @@ void FocusOnCurrentItem() {
 }
 
 void FocusOnParent() {
-  if (itemFocused->parent) {
-    itemFocused = itemFocused->parent;
+  Item* parent = itemFocused->parent;
+  if (parent) {
+    if (!IsRoot(itemFocused) && itemFocused->isOpen == Closed)
+      selectedItem = itemFocused;
+
+    itemFocused = parent;
   }
 }
 

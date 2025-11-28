@@ -7,7 +7,7 @@
 #include "item.cpp"
 #include "actions.cpp"
 
-#define filePath L"sample.txt"
+#define filePath L"foo.txt"
 i32 step = 20;
 
 HWND win;
@@ -359,6 +359,14 @@ void PaintRect(Rect rect, v3 color) {
   PaintRect(rect.x, rect.y, rect.width, rect.height, color);
 }
 
+bool IsFocused(Item* item) {
+  return item == itemFocused;
+}
+
+bool IsItemOpenVisually(Item* item) {
+  return item->isOpen == Open || item == itemFocused;
+}
+
 f32 GetFontHeight() {
   TEXTMETRIC textMetric;
   GetTextMetrics(appState.dc, &textMetric);
@@ -381,7 +389,7 @@ f32 DrawItem(Item* item, f32 x, f32 y, Rect rect) {
     SetColors(white, bg);
   }
 
-  if (!item->isOpen && item->childrenLen > 0) {
+  if (!item->isOpen && item->childrenLen > 0 && item != itemFocused) {
     PaintRect(rect.x, y, 4, fontHeight, red);
   }
 
@@ -424,7 +432,7 @@ void PaintSplit(Item* item, Rect rect) {
       runningPos.y += DrawItem(entry.item, x, y, rect);
     }
 
-    if (entry.item->isOpen) {
+    if (entry.item->isOpen || entry.item == itemFocused) {
       for (i32 i = entry.item->childrenLen - 1; i >= 0; i--) {
         stack[stackLen++] = {entry.item->children[i], entry.level + 1};
       }
@@ -450,6 +458,7 @@ void PaintSplit(Item* item, Rect rect) {
     else
       SetColors(vec3(0.5, 0.5, 0.5), bg);
 
+    SelectFont(appState.dc, font);
     RECT re = {(i32)rect.x, (i32)rect.y, i32(rect.x + rect.width), i32(rect.y + rect.height)};
     DrawTextW(appState.dc, searchTerm, searchTermLen, &re,
               DT_SINGLELINE | DT_NOPREFIX | DT_RIGHT | DT_TOP);
@@ -554,6 +563,7 @@ void DrawApp() {
 
   v3 color = {0.8, 0.8, 0.8};
   SetColors(color, bg);
+  SelectFont(appState.dc, font);
 
   i32 height = DrawTextW(appState.dc, buff.content, buff.len, &footerRect,
                          DT_NOPREFIX | DT_BOTTOM | DT_RIGHT);
