@@ -1,12 +1,15 @@
 I need minimal utf-16 support (minimal because I can live with single codepoint implementation for c16) /c
   I can write in english, but it might get tedious and considering I will need full Unicode support in the future, that's what I need to focus on
 Also I need focus, just to get rid of other stuff and focus on what I'm working on. Thus I can postpone search for now
-Note system 
+Note system
   Done
     Partial UTF-16 suppport. Only single codepoints supported for UTF-16
     Focusing on an item. Will work on limiting action inside the focused item
-  Bugs
+    Added line height
+    G gg take into account itemFocused
+  Bugs /c
     <C-w> in insert mode doesn't work wne cursor placed on / or _
+    b is not working on / or _ as well
   Motions /c
     i I A C D Y
     I can't use di or ci where i is item, since it break diw or cib. Thus i will use dn cn where n is node
@@ -16,9 +19,12 @@ Note system
     Motions - w W b B 0 $ l n 
     Text objects (a i) - w W b B [ ' " s
     5 * (8 + 8 * 2) = 120 that's how many methods will I have implementing this in naive way
-  Backlog /c
-    Focusing on an item
-    Search
+  Backlog
+    Search local via /
+    Visual Line mode
+    Global search ' sg'
+    Save item focused, selected item, scroll position into a separate file or maybe last line in a filepath
+    Draw children lines
     Splits
     Clipboard buffer history (even when not active)
     When moving item up or down, check if it can be placed into a sibling (workflowy does this) /c
@@ -30,23 +36,13 @@ Note system
     Add r and R
     Highlight current word (made it different if url)
     Highlight matching pair of ( [ { < " ' (assume " and ' are inside the same item)
-    Embedded calculator
-    Motions to implement /c
-      cw c0 c$ cl ci
-      f F df( cf)
-      cib ciB dab dib
-      %
-    Draw children lines
     Undo\redo
     Text wrap
-    Visual Line mode
     Remove item and replace it with the children
     Implement proper .
-    Unicode (UTF-16 support)
     Visual mode
     Typography  /c
       Font size and weight for specific items
-    Tags
     Links
     Show if file is saved /c
       Consider saving a file during exit
@@ -55,13 +51,15 @@ Note system
       Board
       Gallery
       Miller list
+    Tags
   Features /c
     Open links via gl /c
-      I need a win32 event on a window before opening a ShellExecute, otherwise I will recieve WM_CHAR on a call
+      I need a custom win32 event on a window before opening a ShellExecute, otherwise I will recieve WM_CHAR on a call
+        called it WM_LAUNCH_URL_UNDER_CURSOR (WM_APP + 1)
     Command Buffer /c
       Allows to have . (repeat last command)
       Allows to have actions consisting from multiple keys and combinators (ctrl, alt, win)
-  Things to think about /c
+  Things to think about
     Multiple cursors
     Two hand navigation /c
       right hand makes regular hjkl motions
@@ -73,6 +71,8 @@ Note system
       What I need to order to support Unicode with UTF-16 encoding
         All text as c16
         Cursor position is set it characters, not bytes or codepoints
+    Embedded youtube player
+    Embedded calculator
   Logs
     21.11.25 /c
       Started the notes project
