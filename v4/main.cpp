@@ -7,7 +7,7 @@
 #include "item.cpp"
 #include "actions.cpp"
 
-#define filePath L"foo.txt"
+#define filePath L"sample.txt"
 i32 step = 20;
 
 HWND win;
@@ -528,11 +528,6 @@ void DrawApp() {
   // PaintRect(left.x + left.width - 1, left.y, 2, left.height, line);
   // PaintRect(middle.x + middle.width - 1, middle.y, 2, middle.height, line);
 
-  RECT footerRect = windowRect;
-  footerRect.top = windowRect.bottom - 220;
-  footerRect.right -= 10 + scrollbarWidth;
-  footerRect.bottom -= 5;
-
   CharBuffer buff = {};
   Append(&buff, L"FPS: ");
   Append(&buff, (i32)round(1000.0f / appState.lastFrameTimeMs));
@@ -561,18 +556,22 @@ void DrawApp() {
   Append(&buff, L"): ");
   AppendCommandBuffer(buff, lastCommand);
 
+  if (errorMessage[0] != '\0') {
+    Append(&buff, L"\nError: ");
+    Append(&buff, errorMessage);
+  }
+
+  SelectFont(appState.dc, font);
+  RECT footerRect = windowRect;
+  footerRect.top = windowRect.bottom - (CountLines(buff.content, buff.len) + 1) * GetFontHeight() -
+                   pagePadding.y;
+  footerRect.right -= 10 + scrollbarWidth;
+  footerRect.bottom -= 5;
+
   v3 color = {0.8, 0.8, 0.8};
   SetColors(color, bg);
-  SelectFont(appState.dc, font);
 
-  i32 height = DrawTextW(appState.dc, buff.content, buff.len, &footerRect,
-                         DT_NOPREFIX | DT_BOTTOM | DT_RIGHT);
-
-  if (errorMessage[0] != '\0') {
-    footerRect.top += height;
-    SetColors(vec3(0.8, 0.2, 0.2), bg);
-    DrawTextW(appState.dc, errorMessage, -1, &footerRect, DT_NOPREFIX | DT_BOTTOM | DT_RIGHT);
-  }
+  DrawTextW(appState.dc, buff.content, buff.len, &footerRect, DT_NOPREFIX | DT_BOTTOM | DT_RIGHT);
 
   PaintWindow();
 }
