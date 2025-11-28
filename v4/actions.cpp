@@ -193,7 +193,24 @@ void DecLineHeight() {
   UpdateFontSize();
 }
 
+void CreateItemInside() {
+  Item* newItem = CreateEmptyItem(EMPTY_ITEM_TEXT_CAPACITY);
+  Item* newParent = selectedItem;
+
+  if (!IsFocused(selectedItem))
+    newParent->isOpen = Open;
+  i32 pos = 0;
+
+  InsertChildAt(newParent, newItem, pos);
+  selectedItem = newItem;
+  UpdateCursorPosWithDesiredOffset(0);
+  EnterInsertMode();
+}
+
 void CreateItemAfter() {
+  if (IsFocused(selectedItem))
+    return CreateItemInside();
+
   Item* newItem = CreateEmptyItem(EMPTY_ITEM_TEXT_CAPACITY);
   Item* newParent = selectedItem->parent;
 
@@ -212,19 +229,6 @@ void CreateItemBefore() {
 
   i32 index = IndexOf(selectedItem);
   i32 pos = index;
-
-  InsertChildAt(newParent, newItem, pos);
-  selectedItem = newItem;
-  UpdateCursorPosWithDesiredOffset(0);
-  EnterInsertMode();
-}
-
-void CreateItemInside() {
-  Item* newItem = CreateEmptyItem(EMPTY_ITEM_TEXT_CAPACITY);
-  Item* newParent = selectedItem;
-
-  newParent->isOpen = Open;
-  i32 pos = 0;
 
   InsertChildAt(newParent, newItem, pos);
   selectedItem = newItem;
@@ -536,7 +540,7 @@ void FocusOnParent() {
   Item* parent = itemFocused->parent;
   if (parent) {
     if (!IsRoot(itemFocused) && itemFocused->isOpen == Closed)
-      selectedItem = itemFocused;
+      UpdateSelection(itemFocused);
 
     itemFocused = parent;
   }
