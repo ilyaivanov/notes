@@ -311,7 +311,7 @@ void DeleteCurrentItem() {
 }
 
 void SelectLastItem() {
-  Item* mostNested = root;
+  Item* mostNested = itemFocused;
   while (mostNested->isOpen) {
     mostNested = mostNested->children[mostNested->childrenLen - 1];
   }
@@ -319,7 +319,10 @@ void SelectLastItem() {
 }
 
 void SelectFirstItem() {
-  UpdateSelection(root->children[0]);
+  if (IsRoot(itemFocused))
+    UpdateSelection(itemFocused->children[0]);
+  else
+    UpdateSelection(itemFocused);
 }
 
 void CopyLine() {
