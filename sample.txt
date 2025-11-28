@@ -4,7 +4,8 @@ Also I need focus, just to get rid of other stuff and focus on what I'm working 
 Note system 
   Done
     Partial UTF-16 suppport. Only single codepoints supported for UTF-16
-  Bugs /c
+    Focusing on an item. Will work on limiting action inside the focused item
+  Bugs
     <C-w> in insert mode doesn't work wne cursor placed on / or _
   Motions /c
     i I A C D Y
@@ -15,7 +16,7 @@ Note system
     Motions - w W b B 0 $ l n 
     Text objects (a i) - w W b B [ ' " s
     5 * (8 + 8 * 2) = 120 that's how many methods will I have implementing this in naive way
-  Backlog
+  Backlog /c
     Focusing on an item
     Search
     Splits
@@ -261,7 +262,7 @@ Video /c
   Computer Graphics from Scratch book review https://www.youtube.com/watch?v=rqXCCpQT8cM
   Host crashes out https://www.youtube.com/watch?v=d7UErAZrwTw
   Learning Assembly Language WIll change how you see software (or would it) https://www.youtube.com/watch?v=7u9alsjBJqM
-Міндічгейт
+Міндічгейт /c
   НАБУ та САП
   Staring video about NABU vs SBU 
     https://www.youtube.com/watch?v=5e7K-WKkn18
