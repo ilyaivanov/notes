@@ -1,14 +1,12 @@
 I need minimal utf-16 support (minimal because I can live with single codepoint implementation for c16) /c
   I can write in english, but it might get tedious and considering I will need full Unicode support in the future, that's what I need to focus on
 Also I need focus, just to get rid of other stuff and focus on what I'm working on. Thus I can postpone search for now
-Note system  /c
+Note system 
   Done
-    Scroll of the items
-    zt and zb
-    Y C and D
+    Partial UTF-16 suppport. Only single codepoints supported for UTF-16
   Bugs /c
     <C-w> in insert mode doesn't work wne cursor placed on / or _
-  Motions
+  Motions /c
     i I A C D Y
     I can't use di or ci where i is item, since it break diw or cib. Thus i will use dn cn where n is node
     yn dn - removes or copies a node
@@ -18,6 +16,7 @@ Note system  /c
     Text objects (a i) - w W b B [ ' " s
     5 * (8 + 8 * 2) = 120 that's how many methods will I have implementing this in naive way
   Backlog
+    Focusing on an item
     Search
     Splits
     Clipboard buffer history (even when not active)
@@ -39,7 +38,6 @@ Note system  /c
     Draw children lines
     Undo\redo
     Text wrap
-    Focusing on an item
     Visual Line mode
     Remove item and replace it with the children
     Implement proper .
@@ -74,7 +72,7 @@ Note system  /c
       What I need to order to support Unicode with UTF-16 encoding
         All text as c16
         Cursor position is set it characters, not bytes or codepoints
-  Logs /c
+  Logs
     21.11.25 /c
       Started the notes project
       Tree view for the notes
@@ -110,7 +108,11 @@ Note system  /c
           Clipboard history
           Clipboard for items (treat \n as new item)
         Open link with gl
-    27.11.25
+    27.11.25 /c
+      zt and zb
+      Y C and D
+      Scroll of the items
+    28.11.25
 Courses\books /c
   Nature of Code
   	x86 modern assembly
