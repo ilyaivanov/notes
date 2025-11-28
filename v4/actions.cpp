@@ -474,8 +474,59 @@ void UpdateSearchResults() {
   scrollOffset.target = GetItemOffsetOnPage(center) - appState.size.y / 2.0f;
 }
 
-void FocusOnCurrentItem() {
+void CloseAllSiblings() {
+  Item* parent = selectedItem->parent;
+  for (i32 i = 0; i < parent->childrenLen; i++) {
+    Item* item = parent->children[i];
+    if (item->childrenLen > 0)
+      item->isOpen = Closed;
+  }
+}
 
+void OpenAllSiblings() {
+  Item* parent = selectedItem->parent;
+  for (i32 i = 0; i < parent->childrenLen; i++) {
+    Item* item = parent->children[i];
+    if (item->childrenLen > 0)
+      item->isOpen = Open;
+  }
+}
+
+void OpenAllItem() {
+  Item* stack[200];
+  int stackLen = 0;
+
+  stack[stackLen++] = itemFocused;
+
+  while (stackLen > 0) {
+    Item* entry = stack[--stackLen];
+    if (entry->childrenLen > 0 && entry != itemFocused)
+      entry->isOpen = Open;
+
+    for (i32 i = entry->childrenLen - 1; i >= 0; i--) {
+      stack[stackLen++] = entry->children[i];
+    }
+  }
+}
+
+void CloseAllItem() {
+  Item* stack[200];
+  int stackLen = 0;
+
+  stack[stackLen++] = itemFocused;
+
+  while (stackLen > 0) {
+    Item* entry = stack[--stackLen];
+    if (entry->childrenLen > 0 && entry != itemFocused)
+      entry->isOpen = Closed;
+
+    for (i32 i = entry->childrenLen - 1; i >= 0; i--) {
+      stack[stackLen++] = entry->children[i];
+    }
+  }
+}
+
+void FocusOnCurrentItem() {
   itemFocused = selectedItem;
 }
 
@@ -547,6 +598,11 @@ void InitActions() {
   commands[i++] = {Ctrl("="), IncFontSize};
   commands[i++] = {Ctrl("_"), DecLineHeight};
   commands[i++] = {Ctrl("+"), IncLineHeight};
+
+  commands[i++] = {Key(" cs"), CloseAllSiblings};
+  commands[i++] = {Key(" os"), OpenAllSiblings};
+  commands[i++] = {Key(" ca"), CloseAllItem};
+  commands[i++] = {Key(" oa"), OpenAllItem};
 
   // One two three. Four five six. Seven eight. Nine.
 

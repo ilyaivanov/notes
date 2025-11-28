@@ -399,20 +399,16 @@ f32 DrawItem(Item* item, f32 x, f32 y, Rect rect) {
   return height * (1 + lineHeight);
 }
 
-void PaintSplit(Item* root, Rect rect) {
+void PaintSplit(Item* item, Rect rect) {
   v2 runningPos = vec2(rect.x, rect.y) + pagePadding;
-
-  RECT re = {(i32)runningPos.x, (i32)runningPos.y, i32(rect.x + rect.width),
-             i32(rect.y + rect.height)};
 
   StackEntry stack[200];
   int stackLen = 0;
 
-  stack[stackLen++] = {itemFocused, -1};
+  stack[stackLen++] = {item, -1};
 
   while (stackLen > 0) {
     StackEntry entry = stack[--stackLen];
-    bool isClosed = !entry.item->isOpen && entry.item->childrenLen > 0;
 
     f32 x = runningPos.x + entry.level * step;
     f32 y = runningPos.y - scrollOffset.current;
@@ -517,7 +513,7 @@ void DrawApp() {
   // Rect right = {middle.x + middle.width, middle.y, middle.width, middle.height};
 
   // PaintSplit(root, left);
-  PaintSplit(root, left);
+  PaintSplit(itemFocused, left);
   // PaintSplit(root, right);
 
   // PaintRect(left.x + left.width - 1, left.y, 2, left.height, line);
