@@ -413,11 +413,11 @@ void OpenUrlUnderCursor() {
   if (!isKnownUrl) {
     const c16* defaultPrefix = L"https://";
     i32 prefixLen = wstrlen((c16*)defaultPrefix);
-    memcpy(url, defaultPrefix, prefixLen);
+    memcpy(url, defaultPrefix, prefixLen * sizeof(c16));
     runningUrl += prefixLen;
   }
 
-  memcpy(runningUrl, urlStart, urlLen);
+  memcpy(runningUrl, urlStart, urlLen * sizeof(c16));
 
   HINSTANCE res = ShellExecuteW(NULL, L"open", url, NULL, NULL, SW_SHOWNORMAL);
   if ((u64)res <= 32) {
