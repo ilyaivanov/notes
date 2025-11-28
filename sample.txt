@@ -7,6 +7,7 @@ Note system
     Focusing on an item. Will work on limiting action inside the focused item
     Added line height
     G gg take into account itemFocused
+    _ca _oa _cs _os open\close all siblings or all items in the view
   Bugs /c
     <C-w> in insert mode doesn't work wne cursor placed on / or _
     b is not working on / or _ as well
