@@ -1,9 +1,12 @@
-Note system
+Note system /c
+  Done
+    Search local via /
+    Map / from keyboard using VK_OEM_2 - fuck me, this is getting a bit of ridicilious
   Bugs
     I don't handle empty state
     <C-w> in insert mode doesn't work wne cursor placed on / or _
     b is not working on / or _ as well
-  Motions /c
+  Motions
     i I A C D Y
     I can't use di or ci where i is item, since it break diw or cib. Thus i will use dn cn where n is node
     yn dn - removes or copies a node
@@ -13,12 +16,13 @@ Note system
     Text objects (a i) - w W b B [ ' " s
     5 * (8 + 8 * 2) = 120 that's how many methods will I have implementing this in naive way
   Backlog
-    Search local via /
     Visual Line mode
     Global search ' sg'
     Image support
+    Highlight children line only for the selectedItem->parent
     Save item focused, selected item, scroll position into a separate file or maybe last line in a filepath
     Draw children lines
+    Visual line marked mode, where you hit space for selecting an item, thus allowing you to have broken selection
     Splits
     Clipboard buffer history (even when not active)
     When moving item up or down, check if it can be placed into a sibling (workflowy does this) /c
@@ -46,13 +50,28 @@ Note system
       Gallery
       Miller list
     Tags
-  Features /c
+  Features
     Open links via gl /c
       I need a custom win32 event on a window before opening a ShellExecute, otherwise I will recieve WM_CHAR on a call
         called it WM_LAUNCH_URL_UNDER_CURSOR (WM_APP + 1)
     Command Buffer /c
       Allows to have . (repeat last command)
       Allows to have actions consisting from multiple keys and combinators (ctrl, alt, win)
+    Search /c
+      Global
+      Local
+        Case sensitive or insensitive
+        Preserve local positioin when starting search
+        Start searching from the current position
+    Modes /c
+      Normal
+      Insert
+      Visual Line
+      Visual Line Marked
+      Visual
+      Visual Line block (doesn't quite make sense for non-monospace fonts)
+      Hidden modes
+        Local search
   Things to think about /c
     Multiple cursors
     Two hand navigation /c
@@ -70,7 +89,7 @@ Note system
     Showing images
       Maybe minimal image editor
     Embedded calculator
-  Logs /c
+  Logs
     21.11.25 /c
       Started the notes project
       Tree view for the notes
@@ -117,64 +136,6 @@ Note system
       G gg take into account itemFocused
       _ca _oa _cs _os open\close all siblings or all items in the view
       Restrict movement and selection inside focused item
-Links file /c
-  Areas to focus /c
-    Notes editor
-    Code editor
-    Music player (aka better youtube)
-    Links editor
-  Audio  /c
-    Shapeforms complete collection https://www.shapeforms.com/shop/p/complete-collection-2021
-  Bezier Curves  /c
-    Interactive guide on bezie curves https://www.summbit.com/blog/bezier-curve-guide/#quadratic-bezier-curve-equation
-    Primer https://pomax.github.io/bezierinfo/
-  Design /c
-    https://friendkit.cssninja.io/#demos-section
-  Animations /c
-    Procedural Animations using Inverser Kinematics https://www.youtube.com/watch?v=NfuO66wsuRg
-    A simple procedural animation technique https://www.youtube.com/watch?v=qlfh_rv6khY
-    Pricedural Animations https://www.youtube.com/watch?v=KPoeNZZ6H4s
-    Motion Graphics 
-      https://vimeo.com/196706967
-      https://www.youtube.com/watch?v=qK4Re_ArS3Q
-    Beauty of bezier curves (nice animation overall) https://www.youtube.com/watch?v=aVwxzDHniEw
-    Motion Canvas is open source https://www.youtube.com/watch?v=H5GETOP7ivs
-  App /c
-    Workflowy like app for notes https://athensresearch.github.io/athens/#/
-    workflowy.com
-  Games  /c
-    https://armorgames.com/brain-creator-game/18636
-    https://armorgames.com/play/2675/phage-wars
-    https://armorgames.com/play/15936/beasts-battle
-    https://www.coolmathgames.com/0-curve-ball-3d
-    Steven Sausage Roll
-    Minimal shooter https://www.reddit.com/r/PlaydateConsole/comments/1o9pc36/this_is_how_it_feels_to_play_xorbius/
-    On terrafactor https://www.youtube.com/watch?v=mx0A7opQS6Q
-      https://www.reddit.com/r/theprimeagen/comments/1m2zipq/if_people_want_to_see_how_real_game_development/
-  Assets /c
-    https://kingbell.itch.io/pixel-sprite-mixer
-    https://deepdivegamestudio.itch.io/demon-sprite-pack
-    https://game-icons.net
-    https://itch.io/game-assets/top-rated/free/tag-dawnbringer/tag-pixel-art
-    https://www.vfxapprentice.com/blog/pixel-art-game-effects-animated
-    https://medievalmore.itch.io/
-    https://kevins-moms-house.itch.io/dungeonsprites
-    https://www.reddit.com/r/PixelArt/comments/1nt3q23/mockup_of_a_srpg_looking_for_feedback/
-    Nice gun animation https://www.reddit.com/r/PixelArt/comments/1ma3t8h/chunky_gun/
-    Minifantasy https://itch.io/s/45421/minifantasycomplete-bundle
-    Minifolks https://lyaseek.itch.io/minifundead
-    SCi-fi hero https://penusbmic.itch.io/sci-fi-hero-sprite
-  Boids /c
-    https://vojtatom.github.io/flocking.cpp
-    https://jtsorlinis.github.io/BoidsWebGPU
-  Health /c
-    https://www.youtube.com/@theanatomylab
-  Science /c
-    Official Science YouTuber Tier List https://www.youtube.com/watch?v=rODu2bWwtBM&t=301s
-  Info /c
-    Shapes lib for animation and pritimives https://acegikmo.com/shapes/
-  Vim  /c
-    Mastering quickfix list https://www.youtube.com/watch?v=aKG9uR6LhX4
 Tutorials /c
   Handmade Hero
   Computer Enhance
@@ -234,7 +195,65 @@ Tutorials /c
         They claim
           - Reading is a usefull skill - factual claim
           - Reading X will make you a great person - opinion claim
-Music
+Links file /c
+  Areas to focus /c
+    Notes editor
+    Code editor
+    Music player (aka better youtube)
+    Links editor
+  Audio  /c
+    Shapeforms complete collection https://www.shapeforms.com/shop/p/complete-collection-2021
+  Bezier Curves  /c
+    Interactive guide on bezie curves https://www.summbit.com/blog/bezier-curve-guide/#quadratic-bezier-curve-equation
+    Primer https://pomax.github.io/bezierinfo/
+  Design /c
+    https://friendkit.cssninja.io/#demos-section
+  Animations /c
+    Procedural Animations using Inverser Kinematics https://www.youtube.com/watch?v=NfuO66wsuRg
+    A simple procedural animation technique https://www.youtube.com/watch?v=qlfh_rv6khY
+    Pricedural Animations https://www.youtube.com/watch?v=KPoeNZZ6H4s
+    Motion Graphics 
+      https://vimeo.com/196706967
+      https://www.youtube.com/watch?v=qK4Re_ArS3Q
+    Beauty of bezier curves (nice animation overall) https://www.youtube.com/watch?v=aVwxzDHniEw
+    Motion Canvas is open source https://www.youtube.com/watch?v=H5GETOP7ivs
+  App /c
+    Workflowy like app for notes https://athensresearch.github.io/athens/#/
+    workflowy.com
+  Games  /c
+    https://armorgames.com/brain-creator-game/18636
+    https://armorgames.com/play/2675/phage-wars
+    https://armorgames.com/play/15936/beasts-battle
+    https://www.coolmathgames.com/0-curve-ball-3d
+    Steven Sausage Roll
+    Minimal shooter https://www.reddit.com/r/PlaydateConsole/comments/1o9pc36/this_is_how_it_feels_to_play_xorbius/
+    On terrafactor https://www.youtube.com/watch?v=mx0A7opQS6Q
+      https://www.reddit.com/r/theprimeagen/comments/1m2zipq/if_people_want_to_see_how_real_game_development/
+  Assets /c
+    https://kingbell.itch.io/pixel-sprite-mixer
+    https://deepdivegamestudio.itch.io/demon-sprite-pack
+    https://game-icons.net
+    https://itch.io/game-assets/top-rated/free/tag-dawnbringer/tag-pixel-art
+    https://www.vfxapprentice.com/blog/pixel-art-game-effects-animated
+    https://medievalmore.itch.io/
+    https://kevins-moms-house.itch.io/dungeonsprites
+    https://www.reddit.com/r/PixelArt/comments/1nt3q23/mockup_of_a_srpg_looking_for_feedback/
+    Nice gun animation https://www.reddit.com/r/PixelArt/comments/1ma3t8h/chunky_gun/
+    Minifantasy https://itch.io/s/45421/minifantasycomplete-bundle
+    Minifolks https://lyaseek.itch.io/minifundead
+    SCi-fi hero https://penusbmic.itch.io/sci-fi-hero-sprite
+  Boids /c
+    https://vojtatom.github.io/flocking.cpp
+    https://jtsorlinis.github.io/BoidsWebGPU
+  Health /c
+    https://www.youtube.com/@theanatomylab
+  Science /c
+    Official Science YouTuber Tier List https://www.youtube.com/watch?v=rODu2bWwtBM&t=301s
+  Info /c
+    Shapes lib for animation and pritimives https://acegikmo.com/shapes/
+  Vim  /c
+    Mastering quickfix list https://www.youtube.com/watch?v=aKG9uR6LhX4
+Music /c
   Art of deep music https://www.youtube.com/watch?v=ZfoEUdAld2k
   LoFi horse https://www.youtube.com/watch?v=_DwmKtbVFJ4
   Chill Music https://www.youtube.com/watch?v=-sZqtdT-GVw
@@ -243,7 +262,7 @@ Music
     Carbon Based Lifeforms /c
       https://www.youtube.com/channel/UCVMAuwgr6s72Vlowid2EsbQ
     Sync24
-    Fahrenheit Project /c
+    Fahrenheit Project
       https://www.youtube.com/watch?v=QCbTQgd-DiU&list=PLmra7fI3naYZ1qtEdWkRvKh6GbHDA1OIR&index=2
     Hol Bauman
     Zero Cult /c
@@ -318,11 +337,13 @@ Music
     Mindspawn
     Robert Rich
     Ian Bodd
-Examples I have /c
+Examples I have
   Youtube API player in a webpage (just html\js)
   WebView2 simple webpage from C win32 
   ASM compiling and printing hello world
   Calling ASM function from the C
+  To include
+    Setting 4x or 8x anisotropic filtering with native API for win32 for OpenGL context
 Video /c
   Attempting Deep Work - John Blow
   About deltaTime in games https://www.youtube.com/watch?v=yGhfUcPjXuE
@@ -355,3 +376,7 @@ Video /c
   Staring video about NABU vs SBU 
     https://www.youtube.com/watch?v=5e7K-WKkn18
   Железняк назвав 4 кандидати на голову ОП: Свириденко. Михайло Федоров, Буданов, Шмигаль. 
+Справи по дому
+  Прибити колонки
+  Зробити розетки
+  Прибратися в старій хаті
