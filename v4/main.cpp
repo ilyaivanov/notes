@@ -9,7 +9,8 @@
 #include "actions.cpp"
 
 #define filePath L"sample.txt"
-i32 step = 20;
+#define step pagePadding.x
+// i32 step = 20;
 
 HWND win;
 HFONT font;
@@ -356,6 +357,10 @@ void PaintRect(i32 x, i32 y, i32 width, i32 height, v3 color) {
   }
 }
 
+void PaintSquareCenteredAt(f32 x, f32 y, f32 size, v3 color) {
+  PaintRect(round(x - size / 2.0f), round(y - size / 2.0f), size, size, color);
+}
+
 void PaintRect(Rect rect, v3 color) {
   PaintRect(rect.x, rect.y, rect.width, rect.height, color);
 }
@@ -391,7 +396,12 @@ f32 DrawItem(Item* item, f32 x, f32 y, Rect rect) {
   }
 
   if (!item->isOpen && item->childrenLen > 0 && item != itemFocused) {
-    PaintRect(rect.x, y, 4, fontHeight, red);
+    f32 g = 0.6;
+    f32 size = 5.0f * fontSize / 14.0f;
+    f32 xSpace = -pagePadding.x / 2.0f + 2.0f;
+    f32 ySpace = 1.0f;
+    // f32 rectX = x - xS
+    PaintSquareCenteredAt(x + xSpace, y + fontHeight / 2.0f + ySpace, size, vec3(g, g, g));
   }
 
   HDC dc = appState.dc;
@@ -643,6 +653,8 @@ extern "C" void WinMainCRTStartup() {
       DispatchMessage(&msg);
     }
 
+    // ugly way to check if item has been closed and scroll now out of bounds
+    scrollOffset.target = ClampScroll(scrollOffset.target);
     DrawApp();
     UpdateSpring(&scrollOffset, appState.lastFrameTimeMs / 1000.0f);
 
