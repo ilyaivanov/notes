@@ -5,6 +5,7 @@
 #include "vimutils.cpp"
 #include "commandBuffer.cpp"
 #include "../anim.cpp"
+#include "search.cpp"
 
 #define EMPTY_ITEM_TEXT_CAPACITY 8
 
@@ -25,21 +26,11 @@ Item* selectedItem;
 Item* itemFocused;
 c16 errorMessage[255];
 
-struct SearchEntrance {
-  Item* item;
-  i32 at;
-};
-
-c16 searchTerm[255];
-i32 searchTermLen;
-
-SearchEntrance searchResults[1024];
-i32 searchResultsLen;
-i32 currentSearchResult;
-
 Spring scrollOffset;
-v2 pagePadding = {20, 5};
+v2 pagePadding = {25, 5};
 f32 pageHeight;
+
+bool isStatsShown = true;
 
 // these are the functions from the main which I don;t want to bring here
 void UpdateCursorPosWithDesiredOffset(i32 pos);
@@ -55,11 +46,10 @@ f32 GetItemOffsetOnPage(Item* item) {
   StackEntry stack[200];
   int stackLen = 0;
 
-  stack[stackLen++] = {root, -1};
+  stack[stackLen++] = {itemFocused, -1};
 
   while (stackLen > 0) {
     StackEntry entry = stack[--stackLen];
-    bool isClosed = !entry.item->isOpen && entry.item->childrenLen > 0;
 
     if (entry.item == item)
       return runningPos.y;
@@ -67,7 +57,7 @@ f32 GetItemOffsetOnPage(Item* item) {
     if (entry.level >= 0) {
       runningPos.y += GetFontHeight();
     }
-    if (!isClosed) {
+    if (IsItemOpenVisually(entry.item)) {
       for (i32 i = entry.item->childrenLen - 1; i >= 0; i--) {
         stack[stackLen++] = {entry.item->children[i], entry.level + 1};
       }
@@ -78,6 +68,8 @@ f32 GetItemOffsetOnPage(Item* item) {
 }
 
 f32 ClampScroll(f32 val) {
+  if (pageHeight <= appState.size.y)
+    return 0;
   if (val < 0)
     return 0;
   if (val > pageHeight - appState.size.y)
@@ -253,11 +245,17 @@ void GoRight() {
 }
 
 void JumpDown() {
-  UpdateSelection(NextSibling(selectedItem));
+  if (selectedItem == itemFocused && IsItemOpenVisually(itemFocused))
+    UpdateSelection(itemFocused->children[0]);
+  else
+    UpdateSelection(NextSibling(selectedItem));
 }
 
 void JumpUp() {
-  UpdateSelection(PrevSibling(selectedItem));
+  if (IsItemOpenVisually(itemFocused) && selectedItem == itemFocused->children[0])
+    UpdateSelection(itemFocused);
+  else
+    UpdateSelection(PrevSibling(selectedItem));
 }
 
 void JumpLeft() {
@@ -298,9 +296,9 @@ void OpenSelected() {
 }
 
 void CloseSelected() {
-  if (selectedItem->isOpen)
+  if (selectedItem->isOpen) {
     selectedItem->isOpen = Closed;
-  else if (!IsRoot(selectedItem->parent))
+  } else if (!IsRoot(selectedItem->parent))
     UpdateSelection(selectedItem->parent);
 }
 
@@ -397,6 +395,10 @@ void PostLaunchUrlEvent() {
   PostMessage(appState.window, WM_LAUNCH_URL_UNDER_CURSOR, 0, 0);
 }
 
+void ToggleStatsVisibility() {
+  isStatsShown = !isStatsShown;
+}
+
 const c16* validPrefixes[] = {L"http:", L"https:", L"file:"};
 void OpenUrlUnderCursor() {
   c16* url = (c16*)valloc(KB(1024));
@@ -472,12 +474,7 @@ void JumpHalfPageUp() {
 
 void EnterSearchLocal() {
   mode = SearchLocal;
-  searchTermLen = 0;
-}
-
-void UpdateSearchResults() {
-  Item* center = root->children[9];
-  scrollOffset.target = GetItemOffsetOnPage(center) - appState.size.y / 2.0f;
+  ClearSearchTerm();
 }
 
 void CloseAllSiblings() {
@@ -546,6 +543,24 @@ void FocusOnParent() {
   }
 }
 
+void MoveNextInSearch() {
+  if (currentSearchEntry == totalSearchEntries - 1)
+    currentSearchEntry = 0;
+  else
+    currentSearchEntry++;
+
+  UpdateSearchResults(itemFocused);
+}
+
+void MovePrevInSearch() {
+  if (currentSearchEntry == 0)
+    currentSearchEntry = totalSearchEntries - 1;
+  else
+    currentSearchEntry--;
+
+  UpdateSearchResults(itemFocused);
+}
+
 void InitActions() {
   i32 i = 0;
 
@@ -601,6 +616,7 @@ void InitActions() {
   commands[i++] = {Ctrl("v"), PasteAfter};
 
   commands[i++] = {Key("gl"), PostLaunchUrlEvent};
+  commands[i++] = {Key("gi"), ToggleStatsVisibility};
 
   commands[i++] = {Key("/"), EnterSearchLocal};
 
@@ -632,5 +648,7 @@ void InitActions() {
   commands[i++] = {Ctrl("f"), FocusOnCurrentItem};
   commands[i++] = {Alt("f"), FocusOnParent};
 
+  commands[i++] = {Key("n"), MoveNextInSearch};
+  commands[i++] = {Key("N"), MovePrevInSearch};
   commandsLen = i;
 }

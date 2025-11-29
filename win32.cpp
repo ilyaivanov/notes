@@ -560,10 +560,23 @@ i32 wstrlen(c16* str) {
   return res;
 }
 
-i32 IndexOf(c16* str, i32 len, c16* substr) {
+bool StrEqual(c16* s1, c16* s2) {
+  while (*s1 && *s2) {
+    if (*s1 != *s2)
+      return false;
+    ++s1;
+    ++s2;
+  }
+  return *s1 == *s2;
+}
+
+i32 IndexOfStartingFrom(c16* str, i32 len, c16* substr, i32 startingFrom) {
+  if (startingFrom < 0)
+    startingFrom = 0;
+
   i32 substrLen = wstrlen(substr);
   i32 currentSubstr = 0;
-  for (i32 i = 0; i < len; i++) {
+  for (i32 i = startingFrom; i < len; i++) {
     if (str[i] == substr[currentSubstr]) {
       currentSubstr++;
       if (currentSubstr == substrLen)
@@ -574,6 +587,10 @@ i32 IndexOf(c16* str, i32 len, c16* substr) {
   }
 
   return -1;
+}
+
+i32 IndexOf(c16* str, i32 len, c16* substr) {
+  return IndexOfStartingFrom(str, len, substr, 0);
 }
 
 bool EndsWith(c16* str, i32 len, c16* substr) {

@@ -177,14 +177,17 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         // don't want that in case of WM_CHAR event
         ignoreNextCharEvent = false;
       } else if (mode == SearchLocal) {
-
-        if (wParam == VK_ESCAPE) {
+        if (wParam == VK_ESCAPE || wParam == VK_RETURN) {
           mode = Normal;
         } else if (wParam == VK_BACK) {
-          searchTermLen = Max(searchTermLen - 1, 0);
+          if (searchTermLen > 0) {
+            searchTerm[--searchTermLen] = L'\0';
+            UpdateSearchResults(itemFocused);
+          }
         } else {
           searchTerm[searchTermLen++] = wParam;
-          UpdateSearchResults();
+          currentSearchEntry = 0;
+          UpdateSearchResults(itemFocused);
         }
       } else if (mode == Insert) {
         if (wParam == VK_ESCAPE) {
@@ -222,13 +225,22 @@ LRESULT OnEvent(HWND handle, UINT message, WPARAM wParam, LPARAM lParam) {
         ignoreNextCharEvent = true;
         RemoveWord();
       }
+
       if (wParam == 'V' && IsKeyPressed(VK_CONTROL)) {
         Paste(true);
         ignoreNextCharEvent = true;
       }
     }
-    if (mode == Normal) {
-      if (IsLetter(wParam)) {
+    if (mode == SearchLocal) {
+      if (wParam == 'W' && IsKeyPressed(VK_CONTROL)) {
+        ClearSearchTerm();
+        ignoreNextCharEvent = true;
+      }
+    } else if (mode == Normal) {
+      if (wParam == VK_OEM_2) {
+        AppendChar('/');
+        ignoreNextCharEvent = true;
+      } else if (IsLetter(wParam) || wParam == '/') {
         if (!IsKeyPressed(VK_SHIFT))
           AppendChar(ToLower(wParam));
         else
@@ -502,7 +514,8 @@ void PaintSplit(Item* item, Rect rect) {
       SetColors(vec3(0.5, 0.5, 0.5), bg);
 
     SelectFont(appState.dc, font);
-    RECT re = {(i32)rect.x, (i32)rect.y, i32(rect.x + rect.width), i32(rect.y + rect.height)};
+    RECT re = {(i32)rect.x, (i32)rect.y, i32(rect.x + rect.width - 10.0),
+               i32(rect.y + rect.height)};
     DrawTextW(appState.dc, searchTerm, searchTermLen, &re,
               DT_SINGLELINE | DT_NOPREFIX | DT_RIGHT | DT_TOP);
   }
@@ -554,29 +567,18 @@ void AppendCommandBuffer(CharBuffer& buff, CommandBuffer& commandBuffer) {
   Append(&buff, commandFormatted.content);
 }
 
-void DrawApp() {
-  memset(canvas.pixels, round(bg.x * 255.0f), canvas.width * canvas.height * 4);
-
-  SelectBitmap(drawingDc, bitmap);
-  RECT windowRect = {0, 0, (i32)appState.size.x, (i32)appState.size.y};
-
-  Rect left = {0, 0, appState.size.x, appState.size.y};
-  // Rect middle = {left.x + left.width, left.y, left.width, left.height};
-  // Rect right = {middle.x + middle.width, middle.y, middle.width, middle.height};
-
-  // PaintSplit(root, left);
-  PaintSplit(itemFocused, left);
-  // PaintSplit(root, right);
-
-  // PaintRect(left.x + left.width - 1, left.y, 2, left.height, line);
-  // PaintRect(middle.x + middle.width - 1, middle.y, 2, middle.height, line);
-
+void DrawStats() {
   CharBuffer buff = {};
   Append(&buff, L"FPS: ");
   Append(&buff, (i32)round(1000.0f / appState.lastFrameTimeMs));
 
   Append(&buff, L"\nDesired: ");
   Append(&buff, cursor.desiredOffset);
+
+  Append(&buff, L"\nSearch results: ");
+  Append(&buff, totalSearchEntries > 0 ? currentSearchEntry + 1 : 0);
+  Append(&buff, L" of ");
+  Append(&buff, totalSearchEntries);
 
   Append(&buff, L"\nActual: ");
   Append(&buff, GetItemLevel(selectedItem) * step);
@@ -605,6 +607,7 @@ void DrawApp() {
   }
 
   SelectFont(appState.dc, font);
+  RECT windowRect = {0, 0, (i32)appState.size.x, (i32)appState.size.y};
   RECT footerRect = windowRect;
   footerRect.top = windowRect.bottom - (CountLines(buff.content, buff.len) + 1) * GetFontHeight() -
                    pagePadding.y;
@@ -615,7 +618,26 @@ void DrawApp() {
   SetColors(color, bg);
 
   DrawTextW(appState.dc, buff.content, buff.len, &footerRect, DT_NOPREFIX | DT_BOTTOM | DT_RIGHT);
+}
 
+void DrawApp() {
+  memset(canvas.pixels, round(bg.x * 255.0f), canvas.width * canvas.height * 4);
+
+  SelectBitmap(drawingDc, bitmap);
+
+  Rect left = {0, 0, appState.size.x, appState.size.y};
+  // Rect middle = {left.x + left.width, left.y, left.width, left.height};
+  // Rect right = {middle.x + middle.width, middle.y, middle.width, middle.height};
+
+  // PaintSplit(root, left);
+  PaintSplit(itemFocused, left);
+  // PaintSplit(root, right);
+
+  // PaintRect(left.x + left.width - 1, left.y, 2, left.height, line);
+  // PaintRect(middle.x + middle.width - 1, middle.y, 2, middle.height, line);
+
+  if (isStatsShown)
+    DrawStats();
   PaintWindow();
 }
 
@@ -658,7 +680,7 @@ extern "C" void WinMainCRTStartup() {
     DrawApp();
     UpdateSpring(&scrollOffset, appState.lastFrameTimeMs / 1000.0f);
 
-    // Sleep(2);
+    Sleep(2);
     i64 frameEnd = GetPerfCounter();
     appState.lastFrameTimeMs = (f32)(frameEnd - frameStart) / (f32)freq * 1000.0f;
     frameStart = frameEnd;

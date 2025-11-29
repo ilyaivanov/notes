@@ -154,6 +154,12 @@ i32 IndexOf(Item* item) {
   return -1;
 }
 
+void CopyItemTitle(void* dest, Item* item) {
+  memcpy(dest, item->text, item->textLen * sizeof(c16));
+  c16* text = (c16*)dest;
+  text[item->textLen] = '\0';
+}
+
 void RemoveChildAt(Item* item, i32 at) {
   for (i32 i = at; i < item->childrenLen - 1; i++) {
     item->children[i] = item->children[i + 1];
