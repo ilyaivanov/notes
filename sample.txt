@@ -19,6 +19,7 @@ Note system /c
     Visual Line mode
     Global search ' sg'
     Image support
+    Discord desktop app has a nice UI scheme, I can copy some of the colors\layouts and font sizes
     Highlight children line only for the selectedItem->parent
     Save item focused, selected item, scroll position into a separate file or maybe last line in a filepath
     Draw children lines
@@ -387,5 +388,8 @@ Video /c
     Staring video about NABU vs SBU 
       https://www.youtube.com/watch?v=5e7K-WKkn18
     Железняк назвав 4 кандидати на голову ОП: Свириденко. Михайло Федоров, Буданов, Шмигаль. 
-  ФОП проти трудових відносин
+  Особи
+    Андрій Єрмак - голова Офісу Президента
+    Рустем Умеров - секретар ради національної безпеки
+  ФОП проти трудових відносин /c
     Законопроект 13507 від 18.07.25 https://itd.rada.gov.ua/billinfo/Bills/Card/56799
