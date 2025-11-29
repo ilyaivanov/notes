@@ -1,12 +1,12 @@
 Note system /c
-  Done
+  Done /c
     Search local via /
     Map / from keyboard using VK_OEM_2 - fuck me, this is getting a bit of ridicilious
-  Bugs
+  Bugs /c
     I don't handle empty state
     <C-w> in insert mode doesn't work wne cursor placed on / or _
     b is not working on / or _ as well
-  Motions
+  Motions /c
     i I A C D Y
     I can't use di or ci where i is item, since it break diw or cib. Thus i will use dn cn where n is node
     yn dn - removes or copies a node
@@ -32,6 +32,7 @@ Note system /c
         Sub second
       Moving Sub second up would place it as child of first
     Add r and R
+    Link different items
     Highlight current word (made it different if url)
     Highlight matching pair of ( [ { < " ' (assume " and ' are inside the same item)
     Undo\redo
@@ -89,53 +90,57 @@ Note system /c
     Showing images
       Maybe minimal image editor
     Embedded calculator
-  Logs
-    21.11.25 /c
-      Started the notes project
-      Tree view for the notes
-      Parse file into a tree structure
-      Insert chars into items 
-      Insert mode
-    22.11.25 /c
-      Serialize items into a file with /c flag at end for closed items
-      Moving items hjkl
-      Delete items (need to check for memory leak)
-      Done /c
-        <C-=> and <C--> to increase and decrease font size
-        I A
-        a s - close\open item
-        item movement in insert mode
-        Enter breaks item into two /c
-          Mode remains the same
-        Desired offset
-        <C-w> in insert mode
-        Jump across the tree via <C-hjkl>
-    23.11.25 - day off
-    24.11.25 /c
-      Done (24.11)
-        $ and 0
-        w b W B
-        Ability to have command buffer, so that I can handle di, ci, dw, etc
-    25.11.25 - day off
-    26.11.25 /c
-      Done
-        Rewrite all actions in a separate actions.cpp file with shortcuts as data	
-        G and gg actions
-        Working with clipboard (copy\paste) /c
-          Clipboard history
-          Clipboard for items (treat \n as new item)
-        Open link with gl
-    27.11.25 /c
-      zt and zb
-      Y C and D
-      Scroll of the items
-    28.11.25 /c
-      Partial UTF-16 suppport. Only single codepoints supported for UTF-16
-      Focusing on an item. Will work on limiting action inside the focused item
-      Added line height
-      G gg take into account itemFocused
-      _ca _oa _cs _os open\close all siblings or all items in the view
-      Restrict movement and selection inside focused item
+  Logs /c
+    Week 1 /c
+      21.11.25 /c
+        Started the notes project
+        Tree view for the notes
+        Parse file into a tree structure
+        Insert chars into items 
+        Insert mode
+      22.11.25 /c
+        Serialize items into a file with /c flag at end for closed items
+        Moving items hjkl
+        Delete items (need to check for memory leak)
+        Done /c
+          <C-=> and <C--> to increase and decrease font size
+          I A
+          a s - close\open item
+          item movement in insert mode
+          Enter breaks item into two /c
+            Mode remains the same
+          Desired offset
+          <C-w> in insert mode
+          Jump across the tree via <C-hjkl>
+      23.11.25 - day off
+    Week 2
+      24.11.25 /c
+        Done (24.11)
+          $ and 0
+          w b W B
+          Ability to have command buffer, so that I can handle di, ci, dw, etc
+      25.11.25 - day off
+      26.11.25 /c
+        Done
+          Rewrite all actions in a separate actions.cpp file with shortcuts as data	
+          G and gg actions
+          Working with clipboard (copy\paste) /c
+            Clipboard history
+            Clipboard for items (treat \n as new item)
+          Open link with gl
+      27.11.25 /c
+        zt and zb
+        Y C and D
+        Scroll of the items
+      28.11.25 /c
+        Partial UTF-16 suppport. Only single codepoints supported for UTF-16
+        Focusing on an item. Will work on limiting action inside the focused item
+        Added line height
+        G gg take into account itemFocused
+        _ca _oa _cs _os open\close all siblings or all items in the view
+        Restrict movement and selection inside focused item
+      29.11.25
+      30.11.25
 Tutorials /c
   Handmade Hero
   Computer Enhance
@@ -273,6 +278,7 @@ Music /c
       2024 - Inversion /c
         https://www.youtube.com/watch?v=wrLd2ywgRq0&list=RDwrLd2ywgRq0&start_radio=1
     James Murray
+  Electro
   Ambient music from Tim the Fallout guy /c
     Video Source /c
       https://www.youtube.com/watch?v=4yHKBeI1uq4
@@ -337,7 +343,7 @@ Music /c
     Mindspawn
     Robert Rich
     Ian Bodd
-Examples I have
+Examples I have /c
   Youtube API player in a webpage (just html\js)
   WebView2 simple webpage from C win32 
   ASM compiling and printing hello world
@@ -371,12 +377,15 @@ Video /c
   Computer Graphics from Scratch book review https://www.youtube.com/watch?v=rqXCCpQT8cM
   Host crashes out https://www.youtube.com/watch?v=d7UErAZrwTw
   Learning Assembly Language WIll change how you see software (or would it) https://www.youtube.com/watch?v=7u9alsjBJqM
-Мідас /c
-  НАБУ та САП
-  Staring video about NABU vs SBU 
-    https://www.youtube.com/watch?v=5e7K-WKkn18
-  Железняк назвав 4 кандидати на голову ОП: Свириденко. Михайло Федоров, Буданов, Шмигаль. 
-Справи по дому
+Справи по дому /c
   Прибити колонки
   Зробити розетки
   Прибратися в старій хаті
+По країні
+  Мідас /c
+    НАБУ та САП
+    Staring video about NABU vs SBU 
+      https://www.youtube.com/watch?v=5e7K-WKkn18
+    Железняк назвав 4 кандидати на голову ОП: Свириденко. Михайло Федоров, Буданов, Шмигаль. 
+  ФОП проти трудових відносин
+    Законопроект 13507 від 18.07.25 https://itd.rada.gov.ua/billinfo/Bills/Card/56799
