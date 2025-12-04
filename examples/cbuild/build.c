@@ -11,7 +11,7 @@ int main(int argc, char** args) {
   Append(&cmd, "clang-cl main.c");
 
   if (IsArg(argc, args, 1, "prod"))
-    Append(&cmd, " /O2");
+    Append(&cmd, " /O1");
   else
     Append(&cmd, " /Zi");
 

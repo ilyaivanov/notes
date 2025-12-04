@@ -124,18 +124,12 @@ i32 RunRebuildCmd(char* command) {
 }
 
 void RebuildIfOld(char* fileName) {
-  int len;
-  char* output = valloc(KB(128));
-  CharBuffer exeNameBuff = CreateCharBuffer(KB(1));
-  CharBuffer srcNameBuff = CreateCharBuffer(KB(1));
-  Append(&exeNameBuff, fileName);
-  Append(&exeNameBuff, ".exe");
-
-  Append(&srcNameBuff, fileName);
-  Append(&srcNameBuff, ".c");
-
-  char* exeName = exeNameBuff.text;
-  char* srcName = srcNameBuff.text;
+  char exeName[128];
+  char oldExeName[128];
+  char srcName[128];
+  sprintf(exeName, "%s.exe", fileName);
+  sprintf(oldExeName, "%s.exe.old", fileName);
+  sprintf(srcName, "%s.c", fileName);
 
   HANDLE exeFile = OpenMyFile(exeName);
   HANDLE srcFile = OpenMyFile(srcName);
@@ -147,21 +141,17 @@ void RebuildIfOld(char* fileName) {
   CloseHandle(srcFile);
 
   if (exeTime < srcTime) {
-    CharBuffer destBuff = CreateCharBuffer(KB(1));
-    Append(&destBuff, exeName);
-    Append(&destBuff, ".old");
-
     const char* source = exeName;
-    const char* dest = destBuff.text;
+    const char* dest = oldExeName;
 
     if (!MoveFileEx(source, dest, MOVEFILE_REPLACE_EXISTING)) {
       PrintLastError();
     }
 
-    char buff[256];
+    char buff[128];
     sprintf(buff, "clang-cl %s", srcName);
 
-    i32 res = RunRebuildCmd(buff); //;
+    i32 res = RunRebuildCmd(buff);
     if (res > 0) {
       if (!MoveFileEx(dest, source, MOVEFILE_REPLACE_EXISTING)) {
         PrintLastError();
