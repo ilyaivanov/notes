@@ -1,7 +1,6 @@
 #define SILENT_REBUILDS
 #include "build.h"
 
-
 int main(int argc, char** args) {
   RebuildIfOld("build");
 
@@ -10,7 +9,7 @@ int main(int argc, char** args) {
   Append(&cmd, "clang-cl main.c -o build/main.exe");
 
   if (IsArg(argc, args, 1, "prod"))
-    Append(&cmd, " /O1");
+    Append(&cmd, " /O2");
   else
     Append(&cmd, " /Zi");
 

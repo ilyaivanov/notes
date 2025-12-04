@@ -50,10 +50,12 @@ HANDLE OpenMyFile(char* path) {
                      FILE_ATTRIBUTE_NORMAL, NULL);
 }
 
-u64 GetWriteTime(HANDLE file) {
+u64 GetWriteTime(char* filePath) {
+  HANDLE file = OpenMyFile(filePath);
   FILETIME writeTime;
   GetFileTime(file, 0, 0, &writeTime);
 
+  CloseHandle(file);
   return (i64)writeTime.dwHighDateTime << 32 | (i64)writeTime.dwLowDateTime;
 }
 
@@ -131,14 +133,8 @@ void RebuildIfOld(char* fileName) {
   sprintf(oldExeName, "%s.exe.old", fileName);
   sprintf(srcName, "%s.c", fileName);
 
-  HANDLE exeFile = OpenMyFile(exeName);
-  HANDLE srcFile = OpenMyFile(srcName);
-
-  i64 exeTime = GetWriteTime(exeFile);
-  i64 srcTime = GetWriteTime(srcFile);
-
-  CloseHandle(exeFile);
-  CloseHandle(srcFile);
+  i64 exeTime = GetWriteTime(exeName);
+  i64 srcTime = GetWriteTime(srcName);
 
   if (exeTime < srcTime) {
     const char* source = exeName;
@@ -149,7 +145,7 @@ void RebuildIfOld(char* fileName) {
     }
 
     char buff[128];
-    sprintf(buff, "clang-cl %s", srcName);
+    sprintf(buff, "clang-cl %s /MD", srcName);
 
     i32 res = RunRebuildCmd(buff);
     if (res > 0) {
