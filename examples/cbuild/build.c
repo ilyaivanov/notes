@@ -1,5 +1,4 @@
 #define SILENT_REBUILDS
-#include <stdlib.h>
 #include "build.h"
 
 
@@ -8,7 +7,7 @@ int main(int argc, char** args) {
 
   CharBuffer cmd = CreateCharBuffer(KB(1));
 
-  Append(&cmd, "clang-cl main.c");
+  Append(&cmd, "clang-cl main.c -o build/main.exe");
 
   if (IsArg(argc, args, 1, "prod"))
     Append(&cmd, " /O1");
@@ -17,5 +16,5 @@ int main(int argc, char** args) {
 
   Run(cmd.text);
 
-  RunRebuildCmd("main.exe");
+  RunRebuildCmd(".\\build\\main.exe");
 }
