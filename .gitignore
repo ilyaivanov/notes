@@ -6,3 +6,4 @@ tags
 *.lib
 *.dll
 *.exp
+*.old

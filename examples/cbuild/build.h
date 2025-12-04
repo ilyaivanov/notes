@@ -4,9 +4,13 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
 
+#define u32 uint32_t
+#define i32 int32_t
 #define u64 uint64_t
 #define i64 int64_t
+
 #define f32 float
 
 inline void* valloc(size_t size) {
@@ -19,7 +23,27 @@ inline void vfree(void* ptr) {
 
 #define KB(v) (v * 1024)
 
-void PrintLastError();
+void PrintLastError() {
+  DWORD errorMessageID = GetLastError();
+  if (errorMessageID == 0) {
+    printf("No error\n");
+    return;
+  }
+
+  LPSTR messageBuffer = NULL;
+
+  FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                     FORMAT_MESSAGE_IGNORE_INSERTS,
+                 NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                 (LPSTR)&messageBuffer, 0, NULL);
+
+  if (messageBuffer) {
+    printf("Error %lu: %s\n", errorMessageID, messageBuffer);
+    LocalFree(messageBuffer);
+  } else {
+    printf("Error %lu: (Could not format message)\n", errorMessageID);
+  }
+}
 
 void RunAndForget(char* cmd) {
   PROCESS_INFORMATION pi;
@@ -73,28 +97,6 @@ void RunCommand(char* cmd, char* output, int* len) {
   CloseHandle(hRead);
 }
 
-void PrintLastError() {
-  DWORD errorMessageID = GetLastError();
-  if (errorMessageID == 0) {
-    printf("No error\n");
-    return;
-  }
-
-  LPSTR messageBuffer = NULL;
-
-  FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-                     FORMAT_MESSAGE_IGNORE_INSERTS,
-                 NULL, errorMessageID, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                 (LPSTR)&messageBuffer, 0, NULL);
-
-  if (messageBuffer) {
-    printf("Error %lu: %s\n", errorMessageID, messageBuffer);
-    LocalFree(messageBuffer);
-  } else {
-    printf("Error %lu: (Could not format message)\n", errorMessageID);
-  }
-}
-
 HANDLE OpenMyFile(char* path) {
   return CreateFileA(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
                      FILE_ATTRIBUTE_NORMAL, NULL);
@@ -131,4 +133,86 @@ bool StrEqual(char* s1, char* s2) {
     ++s2;
   }
   return *s1 == *s2;
+}
+
+typedef struct {
+  char* text;
+  i32 len;
+  i32 capacity;
+} CharBuffer;
+
+// I'm never releasing this memory on purpose
+// let the OS do the job, since this is a single run process
+CharBuffer CreateCharBuffer(i32 capacity) {
+  CharBuffer res = {};
+  res.capacity = capacity;
+  res.text = valloc(capacity);
+  return res;
+}
+
+void Append(CharBuffer* buff, char* str) {
+  while (*str) {
+    buff->text[buff->len++] = *str;
+    str++;
+  }
+  buff->text[buff->len] = '\0';
+}
+
+typedef enum { Rebuilded, NoRebuild, Error } RebuildStatus;
+
+void Run(char* command) {
+  printf("[i] %s\n", command);
+  system(command);
+}
+
+void RebuildIfOld(char* fileName) {
+  int len;
+  char* output = valloc(KB(128));
+  CharBuffer exeNameBuff = CreateCharBuffer(KB(1));
+  CharBuffer srcNameBuff = CreateCharBuffer(KB(1));
+  Append(&exeNameBuff, fileName);
+  Append(&exeNameBuff, ".exe");
+
+  Append(&srcNameBuff, fileName);
+  Append(&srcNameBuff, ".c");
+
+  char* exeName = exeNameBuff.text;
+  char* srcName = srcNameBuff.text;
+
+  HANDLE exeFile = OpenMyFile(exeName);
+  HANDLE srcFile = OpenMyFile(srcName);
+
+  i64 exeTime = GetWriteTime(exeFile);
+  i64 srcTime = GetWriteTime(srcFile);
+
+  CloseHandle(exeFile);
+  CloseHandle(srcFile);
+
+  if (exeTime < srcTime) {
+    CharBuffer destBuff = CreateCharBuffer(KB(1));
+    Append(&destBuff, exeName);
+    Append(&destBuff, ".old");
+
+    const char* source = exeName;
+    const char* dest = destBuff.text;
+
+    if (!MoveFileEx(source, dest, MOVEFILE_REPLACE_EXISTING)) {
+      PrintLastError();
+    }
+
+    char buff[256];
+    sprintf(buff, "clang-cl %s", srcName);
+    Run(buff);
+
+    if (len > 0) {
+      if (!MoveFileEx(dest, source, MOVEFILE_REPLACE_EXISTING)) {
+        PrintLastError();
+        ExitProcess(1);
+      }
+    } else {
+      Run(exeName);
+    }
+
+    ExitProcess(1);
+  }
 }
