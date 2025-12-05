@@ -1,0 +1,41 @@
+<html>
+  <head>
+    <title>WASM example</title>
+  </head>
+
+  <body>
+    <script>
+      (async function () {
+        let importObject = {
+          env: {
+            // buffer: memory,
+            // start_string: start_string_index,
+            print_string: function (ptr) {
+              const mem = new DataView(asm.instance.exports.memory.buffer);
+
+              const a = mem.getInt32(ptr + 0, true); // little-endian
+              const b = mem.getInt32(ptr + 4, true);
+              const c = mem.getInt32(ptr + 8, true);
+
+              console.log(ptr);
+              console.log({ a, b, c });
+              // const bytes = new Uint8Array(
+              //   memory.buffer,
+              //   start_string_index,
+              //   str_len,
+              // );
+              // const log_string = new TextDecoder("utf8").decode(bytes);
+              // console.log(log_string);
+            },
+          },
+        };
+        const asm = await WebAssembly.instantiateStreaming(
+          fetch("add.wasm"),
+          importObject,
+        );
+
+        asm.instance.exports.add(10, 12);
+      })();
+    </script>
+  </body>
+</html>
