@@ -1,5 +1,6 @@
 // build via 
-// gcc main.c -O3 -Ofast -march=native -o main   $(pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.1)
+// gcc win.c -o win -lglfw -lm -lGL
+
 
 #include <GLFW/glfw3.h>
 #include <math.h>

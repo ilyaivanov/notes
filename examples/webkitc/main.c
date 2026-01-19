@@ -1,3 +1,6 @@
+// gcc main.c -O3 -Ofast -march=native -o main   $(pkg-config --cflags --libs gtk+-3.0 webkit2gtk-4.1)
+// k
+
 #include <JavaScriptCore/JavaScript.h>
 #include <gtk/gtk.h>
 #include <webkit2/webkit2.h>
