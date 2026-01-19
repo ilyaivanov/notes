@@ -1,0 +1,26 @@
+<html>
+  <head></head>
+  <body>
+    <h1 id="foo">Hello There</h1>
+
+    <script>
+
+      function send() {
+
+        window.webkit.messageHandlers.external.postMessage( 'Hello from JavaScript');
+      }
+
+      function add(x, y){
+
+        return x + y + 2;
+      }
+      const existing = Number(localStorage.getItem('foo')) || 1;
+      localStorage.setItem('foo', existing + 1);
+      const elem = document.getElementById("foo");
+      elem.addEventListener("click", send);
+      elem.innerText = 'foo ' + existing;
+      fetch("file:///home/ilya/proj/webkit/main.c").then(r => console.log(r.text()));
+
+    </script>
+  </body>
+</html>
